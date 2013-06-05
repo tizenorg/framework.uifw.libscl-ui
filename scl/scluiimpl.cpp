@@ -41,6 +41,11 @@ CSCLUIImpl::CSCLUIImpl()
         builder->init(SCLWINDOW_INVALID);
         controller->init();
     }*/
+    m_initialized = FALSE;
+    /* FIXME whethe need the libscl-ui autocapital the shift state */
+    /* if set to FALSE, the libscl-ui will not auto handle the shift state */
+    /* the client will handle outside the libscl-ui, default is TRUE */
+    m_autocapital_shift_state = TRUE;
 }
 
 CSCLUIImpl::~CSCLUIImpl()
@@ -414,14 +419,14 @@ CSCLUIImpl::set_shift_state(SCLShiftState state)
             context->set_shift_state(state);
             if (state != current_state) {
                 windows->update_window(windows->get_base_window());
-            }
-            if (context->get_tts_enabled()) {
-                if (state == SCL_SHIFT_STATE_ON) {
-                    utils->play_tts(SCL_SHIFT_STATE_ON_HINT_STRING);
-                } else if (state == SCL_SHIFT_STATE_LOCK) {
-                    utils->play_tts(SCL_SHIFT_STATE_LOCK_HINT_STRING);
-                } else {
-                    utils->play_tts(SCL_SHIFT_STATE_OFF_HINT_STRING);
+                if (context->get_tts_enabled()) {
+                    if (state == SCL_SHIFT_STATE_ON) {
+                        utils->play_tts(SCL_SHIFT_STATE_ON_HINT_STRING);
+                    } else if (state == SCL_SHIFT_STATE_LOCK) {
+                        utils->play_tts(SCL_SHIFT_STATE_LOCK_HINT_STRING);
+                    } else {
+                        utils->play_tts(SCL_SHIFT_STATE_OFF_HINT_STRING);
+                    }
                 }
             }
         }
@@ -919,14 +924,11 @@ CSCLUIImpl::unset_string_substitution(const sclchar *original)
 }
 
 void
-CSCLUIImpl::set_caps_mode(sclint mode) {
-    m_caps_mode = mode;
-    if (get_shift_state() != SCL_SHIFT_STATE_LOCK) {
-        set_shift_state(mode ? SCL_SHIFT_STATE_ON : SCL_SHIFT_STATE_OFF);
-    }
+CSCLUIImpl::set_autocapital_shift_state(sclboolean flag) {
+    m_autocapital_shift_state = flag;
 }
 
-sclint
-CSCLUIImpl::get_caps_mode() {
-    return m_caps_mode;
+sclboolean
+CSCLUIImpl::get_autocapital_shift_state() {
+    return m_autocapital_shift_state;
 }
