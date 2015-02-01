@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -237,7 +237,7 @@ encode_key_coordinate_frame_file(ResourceStorage& storage, IMetaData_Helper& md_
     // 2 byte (range[0-65536))
     const int KEY_COORDIANTE_REC_DATA_SIZE_BYTES = 2;
 
-    int init_size = storage.size();
+    int init_size = storage.get_size();
     // data size
     storage.reserve(DATA_SIZE_BYTES);
 
@@ -256,19 +256,19 @@ encode_key_coordinate_frame_file(ResourceStorage& storage, IMetaData_Helper& md_
     storage.reserve(KEY_COORDIANTE_REC_DATA_SIZE_BYTES);
 
     Key_coordinate_record_width record_width;
-    set_key_coordinate_record_width(md_helper, record_width);
+    set_key_coordinate_record_width(&md_helper, record_width);
 
 
     int key_coordinate_rec_data_size = 0;
     for ( int i = 0; i < layout_num; ++i) {
         for ( int j = 0; j < pKey_num_array[i]; ++j) {
-            int pre_size = storage.size();
+            int pre_size = storage.get_size();
 
             SclLayoutKeyCoordinatePointer cur = _key_coordinate_pointer_frame[i][j];
             if (!cur) break;
             encode_key_coordinate_record(storage, cur, record_width);
 
-            int aft_size = storage.size();
+            int aft_size = storage.get_size();
             if (key_coordinate_rec_data_size == 0) {
                 key_coordinate_rec_data_size = aft_size - pre_size;
             }
@@ -278,7 +278,7 @@ encode_key_coordinate_frame_file(ResourceStorage& storage, IMetaData_Helper& md_
 
     delete[] pKey_num_array;
 
-    int advance_size = storage.size() - init_size;
+    int advance_size = storage.get_size() - init_size;
     storage.random_put<sint_t>(advance_size, DATA_SIZE_BYTES, init_size);
 
     // random put key_coordinate_rec_data_size
@@ -290,7 +290,7 @@ encode_key_coordinate_frame_file(ResourceStorage& storage, IMetaData_Helper& md_
                                 KEY_COORDIANTE_REC_DATA_SIZE_BYTES,
                                 key_coordinate_rec_data_offset);
 
-    return storage.size();
+    return storage.get_size();
 }
 
 int
@@ -301,7 +301,7 @@ encode_key_coordinate_frame_file(const char* file, int& offset, IMetaData_Helper
     encode_key_coordinate_frame_file(storage, md_helper);
     storage.toFile(file, offset);
 
-    return storage.size();
+    return storage.get_size();
 }
 
 int
@@ -312,5 +312,5 @@ encode_key_coordinate_frame_file(const char* file, IMetaData_Helper& md_helper) 
     encode_key_coordinate_frame_file(storage, md_helper);
     storage.toFile(file);
 
-    return storage.size();
+    return storage.get_size();
 }

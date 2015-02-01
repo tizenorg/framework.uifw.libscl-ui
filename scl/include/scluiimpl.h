@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -56,6 +56,8 @@ public:
 
     sclboolean set_input_mode(const sclchar *input_mode);
     const sclchar* get_input_mode();
+    sclboolean set_popup_input_mode(sclwindow window, const sclchar *input_mode);
+    const sclchar* get_popup_input_mode(sclwindow window);
 
     void set_update_pending(sclboolean pend);
 
@@ -72,6 +74,9 @@ public:
     void set_shift_state(SCLShiftState state);
     SCLShiftState get_shift_state();
 
+    void set_caps_lock_mode(sclboolean mode);
+    sclboolean get_caps_lock_mode();
+
     void notify_app_focus_changed();
     void reset_popup_timeout();
     void close_all_popups();
@@ -87,6 +92,9 @@ public:
     sclfloat get_custom_scale_rate_x();
     sclfloat get_custom_scale_rate_y();
     void set_custom_scale_rate(sclfloat x, sclfloat y);
+
+    void set_custom_starting_coordinates(sclint x, sclint y);
+    void set_custom_starting_coordinates_option(SCLStartingCoordinatesOption option);
 
     sclint get_multi_touch_context_num();
     sclboolean get_multi_touch_event(sclint seqorder, SclUIEventDesc *desc);
@@ -105,6 +113,8 @@ public:
     void enable_vibration(sclboolean enabled);
     void enable_tts(sclboolean enabled);
     void enable_shift_multi_touch(sclboolean enabled);
+    void enable_highlight_ui(sclboolean enabled);
+    void enable_highlight_ui_animation(sclboolean enabled);
 
     void enable_touch_offset(sclboolean enabled);
     void disable_input_events(sclboolean disabled);
@@ -115,6 +125,9 @@ public:
     void unset_string_substitution(const sclchar *original);
     sclboolean get_autocapital_shift_state();
     void set_autocapital_shift_state(sclboolean flag);
+
+    sclboolean process_key_event(const char *key);
+
 private:
     sclboolean m_initialized;
     sclboolean m_autocapital_shift_state;

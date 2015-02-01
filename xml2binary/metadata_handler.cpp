@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -41,7 +41,7 @@ encode(const char* file)const{
     encode_metadata(storage, metadata);
     storage.toFile(file);
 
-    return storage.size();
+    return storage.get_size();
 }
 
 int MetaData_Handler::
@@ -50,13 +50,13 @@ encode(const char* file, int& offset)const{
     encode_metadata(storage, metadata);
     storage.toFile(file, offset);
 
-    return storage.size();
+    return storage.get_size();
 }
 
 int MetaData_Handler::
 encode(ResourceStorage& storage)const{
     encode_metadata(storage, metadata);
-    return storage.size();
+    return storage.get_size();
 }
 
 const unsigned short MetaData_Handler::
@@ -64,7 +64,7 @@ get_width(const char* field_name) const{
     if (field_name == NULL) return 0;
 
     int idx = m_current_metadata_record_id;
-    if (idx < 0 || idx > metadata.m_vec_metadata_record.size()) return 0;
+    if (idx < 0 || idx > (int)metadata.m_vec_metadata_record.size()) return 0;
 
     const MetaData_Record&  metadata_record = metadata.m_vec_metadata_record.at(idx);
 
@@ -76,7 +76,7 @@ get_width(const char* field_name) const{
 const unsigned short MetaData_Handler::
 get_width(const char* name, const MetaData_Record& metadata_record) const{
     assert(name);
-    for (int i = 0; i < metadata_record.vField.size(); ++i) {
+    for (size_t i = 0; i < metadata_record.vField.size(); ++i) {
         if ( 0 == strcmp(name, metadata_record.vField.at(i).m_name)) {
             return metadata_record.vField.at(i).m_width;
         }
@@ -88,7 +88,7 @@ const int MetaData_Handler::
 find_metadata_record_index(const char* name)const{
     assert(name);
 
-    for ( int i = 0; i < metadata.m_vec_metadata_record.size(); ++i) {
+    for ( size_t i = 0; i < metadata.m_vec_metadata_record.size(); ++i) {
         const MetaData_Record& metadata_record = metadata.m_vec_metadata_record.at(i);
 
         if (0 == strcmp(metadata_record.m_name, name)) {
@@ -109,7 +109,8 @@ parsing_field(const xmlNodePtr node, MetaData_Field& data, const MetaData_Width&
     xmlChar* name = xmlGetProp(node, (const xmlChar*)"name");
     if (name == NULL) return -1;
     /*FIXME strncpy ?*/
-    strcpy(data.m_name, (const char*)name);
+    strncpy(data.m_name, (const char*)name, sizeof(data.m_name));
+    data.m_name[sizeof(data.m_name)-1] = '\0';
     xmlFree(name);
 
     xmlChar* type = xmlGetProp(node, (const xmlChar*)"type");
@@ -118,25 +119,28 @@ parsing_field(const xmlNodePtr node, MetaData_Field& data, const MetaData_Width&
     int ret = 0;
     if (0 == xmlStrcmp(type, (const xmlChar*)"string_id")) {
         /*FIXME use vaule instead string*/
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = metadataWidth.string_id_width;
     } else if ( 0 == xmlStrcmp(type, (const xmlChar*)"int8")) {
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = 1;
-
     } else if ( 0 == xmlStrcmp(type, (const xmlChar*)"int16")) {
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = 2;
-
     } else if ( 0 == xmlStrcmp(type, (const xmlChar*)"int32")) {
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = 4;
-
     } else if ( 0 == xmlStrcmp(type, (const xmlChar*)"float32")) {
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = 4;
     } else if ( 0 == xmlStrcmp(type, (const xmlChar*)"float64")) {
-        strcpy(data.m_type, (const char*)type);
+        strncpy(data.m_type, (const char*)type, sizeof(data.m_type));
+        data.m_type[sizeof(data.m_type) - 1] = '\0';
         data.m_width = 8;
     }
     else{
@@ -153,7 +157,8 @@ parsing_record(const xmlNodePtr curNode, MetaData_Record& metadataRecord, const 
     //parsing struct name
     xmlChar* name = xmlGetProp(curNode, (const xmlChar*)"name");
     if (name == NULL) return -1;
-    strcpy(metadataRecord.m_name, (const char*)name);
+    strncpy(metadataRecord.m_name, (const char*)name, sizeof(metadataRecord.m_name));
+    metadataRecord.m_name[sizeof(metadataRecord.m_name)-1] = '\0';
     xmlFree(name);
 
     xmlNodePtr childNode = curNode->xmlChildrenNode;
@@ -227,7 +232,8 @@ parsing_metadata() {
 
     xmlChar* version = xmlGetProp(curNode, (const xmlChar*)"version");
     if (version) {
-        strcpy(metadata.m_version, (const char*)version);
+        strncpy(metadata.m_version, (const char*)version, sizeof(metadata.m_version));
+        metadata.m_version[sizeof(metadata.m_version)-1] = '\0';
         xmlFree(version);
     } else {
         strcpy(metadata.m_version, (const char*)"");

@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -36,7 +36,7 @@ typedef struct {
     EFLOBJECT_TYPE type;
     SclRectangle position;
     Evas_Object *object;
-    char *etc_info;
+    const char *etc_info;
     sclboolean extracted;
     void *data;
 } EFLObject;
@@ -49,10 +49,10 @@ public :
     void init();
     void fini();
 
-    sclwindow create_base_window(const sclwindow parent, SclWindowContext *winctx, scl16 width, scl16 height);
-    sclwindow create_window(const sclwindow parent, SclWindowContext *winctx, scl16 width, scl16 height);
-    sclwindow create_magnifier_window(const sclwindow parent, SclWindowContext *winctx, scl16 width, scl16 height);
-    sclwindow create_dim_window(const sclwindow parent, SclWindowContext *winctx, scl16 width, scl16 height);
+    sclwindow create_base_window(const sclwindow parent, SclWindowContext *window_context, scl16 width, scl16 height);
+    sclwindow create_window(const sclwindow parent, SclWindowContext *window_context, scl16 width, scl16 height);
+    sclwindow create_magnifier_window(const sclwindow parent, SclWindowContext *window_context, scl16 width, scl16 height);
+    sclwindow create_dim_window(const sclwindow parent, SclWindowContext *window_context, scl16 width, scl16 height);
     bool destroy_window(sclwindow window);
     void show_window(const sclwindow window, sclboolean queue);
     void hide_window(const sclwindow window,  sclboolean fForce = FALSE);

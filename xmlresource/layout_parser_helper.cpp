@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -82,6 +82,7 @@ const string ButtonTypeHelper::pcMultitap = "multitap";
 const string ButtonTypeHelper::pcRotation = "rotation";
 const string ButtonTypeHelper::pcDirection = "direction";
 const string ButtonTypeHelper::pcRelative_Direction = "relative_direction";
+const string ButtonTypeHelper::pcToggle = "toggle";
 const string ButtonTypeHelper::pcUiitem = "uiitem";
 
 const string ButtonTypeHelper::toString(const int val) {
@@ -126,6 +127,8 @@ const int ButtonTypeHelper::Int(const string str) {
         return DIRECTION;
     } else if (str ==  pcRelative_Direction) {
         return RELATIVE_DIRECTION;
+    } else if (str ==  pcToggle) {
+        return TOGGLE;
     } else if (str ==  pcUiitem) {
         return UIITEM;
     } else {

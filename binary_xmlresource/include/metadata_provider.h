@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -42,18 +42,18 @@ class Metadata_Provider:public IMetadata_Provider{
             assert(record_name != NULL);
             if ( current_record_name == NULL ||0 != strcmp(current_record_name, record_name)) {
                 current_record_name = record_name;
-                curRecordIndex = find_metadata_record_index(record_name);
+                curRecordIndex = (int)find_metadata_record_index(record_name);
                 if (curRecordIndex == -1) {
                     printf("Can not find %s metadata record.\n", record_name);
                 }
             }
         }
     private:
-       const int find_metadata_record_index(const char* name)const{
+       size_t find_metadata_record_index(const char* name)const{
             if (name == NULL) return -1;
 
             const MetaData* metadata = m_metadataParser->get_metadata();
-            for ( int i = 0; i < metadata->m_vec_metadata_record.size(); ++i) {
+            for ( size_t i = 0; i < metadata->m_vec_metadata_record.size(); ++i) {
                 const MetaData_Record& metadata_record = metadata->m_vec_metadata_record.at(i);
 
                 if (0 == strcmp(metadata_record.m_name, name)) {

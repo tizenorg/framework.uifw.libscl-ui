@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -30,7 +30,7 @@ namespace scl
 typedef struct _SclButtonContext {
     sclboolean used;
     sclbyte multikeyIdx;
-    //sclboolean pressed;
+    sclboolean toggled;
     SCLButtonState state;
 } SclButtonContext;
 /**
@@ -72,7 +72,7 @@ public:
     const sclchar* get_cur_themename();
 
     sclint set_private_key(SclPrivateKeyProperties* properties, sclboolean fRedraw, sclboolean fPendingUpdate);
-    sclint set_private_key(sclchar* custom_id, sclchar* label, sclchar* imagelabel[SCL_BUTTON_STATE_MAX], sclchar* imagebg[SCL_BUTTON_STATE_MAX], sclulong key_event, sclchar *key_value, sclboolean fRedraw, sclboolean fPendingUpdate);
+    sclint set_private_key(const sclchar* custom_id, sclchar* label, sclchar* imagelabel[SCL_BUTTON_STATE_MAX], sclchar* imagebg[SCL_BUTTON_STATE_MAX], sclulong key_event, sclchar *key_value, sclboolean fRedraw, sclboolean fPendingUpdate);
     void unset_private_key(sclshort input_mode_index, sclbyte layout_index, sclbyte key_index);
     void unset_private_key(const sclchar* custom_id);
 
@@ -83,6 +83,12 @@ public:
     void set_string_substitution(const sclchar *original, const sclchar *substitute);
     void unset_string_substitution(const sclchar *original);
     const sclchar* find_substituted_string(const sclchar *original);
+
+    void set_custom_starting_coordinates(sclint x, sclint y);
+    SclPoint get_custom_starting_coordinates();
+
+    void set_custom_starting_coordinates_option(SCLStartingCoordinatesOption option);
+    SCLStartingCoordinatesOption get_custom_starting_coordinates_option();
 private:
     sclboolean resize_resource_elements_by_resolution();
     sclboolean resize_layout_by_resolution(sclbyte layout_index, sclboolean resize_key_only = FALSE);
@@ -110,6 +116,9 @@ protected:
     std::map<std::string, std::string> mStringSubstitutor;
 
     sclchar mCurThemename[_POSIX_PATH_MAX];
+
+    SclPoint mCurStartingCoordinates;
+    SCLStartingCoordinatesOption mCurStartingCoordinatesOption;
 };
 
 }

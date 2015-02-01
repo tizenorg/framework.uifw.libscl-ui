@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -73,12 +73,15 @@ CSCLGraphicsImplEfl::~CSCLGraphicsImplEfl()
 
 void CSCLGraphicsImplEfl::init()
 {
-
+    m_highlight_ui_object = NULL;
 }
 
 void CSCLGraphicsImplEfl::fini()
 {
-
+    if (m_highlight_ui_object) {
+        evas_object_del(m_highlight_ui_object);
+        m_highlight_ui_object = NULL;
+    }
 }
 
 Evas_Object* extract_partimage_from_fullimage(
@@ -143,16 +146,23 @@ CSCLGraphicsImplEfl::draw_image(sclwindow window, const scldrawctx draw_ctx, scl
     CSCLResourceCache *cache = CSCLResourceCache::get_instance();
     CSCLWindows *windows = CSCLWindows::get_instance();
     CSCLUtils *utils = CSCLUtils::get_instance();
-    SclWindowContext *winctx = NULL;
-    SclWindowContext *targetctx = NULL;
+    SclWindowContext *window_context = NULL;
+    SclWindowContext *target_window_context = NULL;
     if (windows && window) {
-        //winctx = windows->get_window_context(window, FALSE);
-        winctx = windows->get_window_context(window);
-        //targetctx = windows->get_window_context(draw_ctx, FALSE);
-        targetctx = windows->get_window_context(draw_ctx);
+        //window_context = windows->get_window_context(window, FALSE);
+        window_context = windows->get_window_context(window);
+        //target_window_context = windows->get_window_context(draw_ctx, FALSE);
+        target_window_context = windows->get_window_context(draw_ctx);
     }
 
-    if (winctx && targetctx && image_path && utils && cache && windows) {
+    if (window_context && target_window_context && image_path && utils && cache && windows) {
+        sclboolean is_highlight_ui = FALSE;
+        sclchar buf[_POSIX_PATH_MAX] = {0};
+        utils->get_decomposed_path(buf, IMG_PATH_PREFIX, image_path);
+        if (strcmp(buf, SCL_HIGHLIGHT_UI_IMAGE) == 0) {
+            is_highlight_ui = TRUE;
+        }
+
         if (strlen(image_path) > 0) {
 #ifdef DO_NOT_MOVE_MAGNIFIER_WINDOW
             if (window == windows->get_magnifier_window()) {
@@ -209,127 +219,144 @@ CSCLGraphicsImplEfl::draw_image(sclwindow window, const scldrawctx draw_ctx, scl
             }
             if (!bFound) {
 #endif
-            EFLObject *object = new EFLObject;
             EFLObject *clip_object = NULL;
-            if (object) {
-                Evas_Object *window_object = (Evas_Object*)window;
-                if (winctx->is_virtual) {
-                    window_object = static_cast<Evas_Object*>(windows->get_base_window());
-                }
 
-                Evas *evas = evas_object_evas_get(window_object);
-                Evas_Object *image_object = evas_object_image_add(evas);
-                object->extracted = FALSE;
+            Evas_Object *window_object = (Evas_Object*)window;
+            if (window_context->is_virtual) {
+                window_object = static_cast<Evas_Object*>(windows->get_base_window());
+            }
 
-                if (image_object) {
-                    int image_width = 0;
-                    int image_height = 0;
-                    evas_object_image_file_set(image_object, image_path, NULL);
-                    evas_object_image_size_get(image_object, &image_width, &image_height);
-                    if (cachedinfo) {
-                        evas_object_image_border_set(image_object,
-                                cachedinfo->nine_patch_left,
-                                cachedinfo->nine_patch_right,
-                                cachedinfo->nine_patch_top,
-                                cachedinfo->nine_patch_bottom);
-                    } else {
-                        const SclNinePatchInfo *nine_patch_info = utils->get_nine_patch_info(image_path);
-                        if (nine_patch_info) {
+            Evas *evas = evas_object_evas_get(window_object);
+            Evas_Object *image_object = NULL;
+            if (is_highlight_ui && m_highlight_ui_object) {
+                image_object = m_highlight_ui_object;
+                evas_object_move(image_object, dest_x, dest_y);
+                evas_object_raise(image_object);
+                evas_object_show(image_object);
+            } else {
+                EFLObject *object = new EFLObject;
+                if (object) {
+                    image_object = evas_object_image_add(evas);
+                    object->extracted = FALSE;
+
+                    if (image_object) {
+                        int image_width = 0;
+                        int image_height = 0;
+                        evas_object_image_file_set(image_object, image_path, NULL);
+                        evas_object_image_size_get(image_object, &image_width, &image_height);
+                        if (cachedinfo) {
                             evas_object_image_border_set(image_object,
-                                    nine_patch_info->left, nine_patch_info->right, nine_patch_info->top, nine_patch_info->bottom);
-                        }
-                    }
-                    const SclLayout *layout = cache->get_cur_layout(window);
-                    if (layout) {
-                        if (layout->display_mode == DISPLAYMODE_PORTRAIT) {
-                            image_width = utils->get_scaled_x(image_width);
-                            image_height = utils->get_scaled_y(image_height);
+                                    cachedinfo->nine_patch_left,
+                                    cachedinfo->nine_patch_right,
+                                    cachedinfo->nine_patch_top,
+                                    cachedinfo->nine_patch_bottom);
                         } else {
-                            image_width = utils->get_scaled_y(image_width);
-                            image_height = utils->get_scaled_x(image_height);
+                            const SclNinePatchInfo *nine_patch_info = utils->get_nine_patch_info(image_path);
+                            if (nine_patch_info) {
+                                evas_object_image_border_set(image_object,
+                                        nine_patch_info->left, nine_patch_info->right, nine_patch_info->top, nine_patch_info->bottom);
+                            }
                         }
-                    }
-                    if (src_width == -1 && src_height == -1) {
-                        src_width = image_width;
-                        src_height = image_height;
-                    }
-                    if ((src_width > 0 && src_height > 0) && (image_width != dest_width || image_height != dest_height) && extrace_image) {
-#ifdef EXTRACT_PARTIMAGE
-                        Evas_Object *newobj = extract_partimage_from_fullimage(image_object, src_x, src_y, 0, 0, src_width, src_height);
-                        object->extracted = TRUE;
-                        evas_object_del(image_object);
-                        image_object = newobj;
-                        evas_object_move(image_object, dest_x, dest_y);
-                        if (dest_width > 0 && dest_height > 0) {
-                            evas_object_image_fill_set(image_object, 0, 0, dest_width,dest_height);
-                            evas_object_resize(image_object, dest_width, dest_height);
+                        const SclLayout *layout = cache->get_cur_layout(window);
+                        if (layout) {
+                            if (layout->display_mode == DISPLAYMODE_PORTRAIT) {
+                                image_width = utils->get_scaled_x(image_width);
+                                image_height = utils->get_scaled_y(image_height);
+                            } else {
+                                image_width = utils->get_scaled_y(image_width);
+                                image_height = utils->get_scaled_x(image_height);
+                            }
                         }
-#else
-                        //evas_object_move(image_object, src_x - dest_x, src_y - dest_y);
-                        evas_object_move(image_object, dest_x - src_x, dest_y - src_y);
-                        evas_object_image_fill_set(image_object, 0, 0, image_width, image_height);
-                        evas_object_resize(image_object, image_width, image_height);
-
-                        Evas_Object *clipper = evas_object_rectangle_add(evas);
-                        evas_object_color_set(clipper, 255, 255, 255, 255);
-                        //evas_object_color_set(clipper, 0, 0, 0, 0);
-                        evas_object_move(clipper, dest_x, dest_y);
-                        evas_object_resize(clipper, dest_width, dest_height);
-                        evas_object_clip_set(image_object, clipper);
-                        evas_object_show(clipper);
-
-                        clip_object = new EFLObject;
-                        clip_object->object = clipper;
-                        clip_object->type = EFLOBJECT_CLIPOBJECT;
-                        clip_object->position.x = dest_x;
-                        clip_object->position.y = dest_y;
-                        clip_object->position.width = dest_width;
-                        clip_object->position.height = dest_height;
-                        clip_object->etc_info = image_path;
-                        clip_object->extracted = FALSE;
-                        clip_object->data = NULL;
-#endif
-                    } else {
-                        evas_object_move(image_object, dest_x, dest_y);
-                        if (dest_width > 0 && dest_height > 0) {
-                            evas_object_image_fill_set(image_object, 0, 0, dest_width,dest_height);
-                            evas_object_resize(image_object, dest_width, dest_height);
+                        if (src_width == -1 && src_height == -1) {
+                            src_width = image_width;
+                            src_height = image_height;
                         }
-                    }
-                    evas_object_raise(image_object);
-                    evas_object_show(image_object);
+                        if ((src_width > 0 && src_height > 0) &&
+                            (image_width != dest_width || image_height != dest_height) && extrace_image) {
+    #ifdef EXTRACT_PARTIMAGE
+                            Evas_Object *newobj = extract_partimage_from_fullimage(image_object, src_x, src_y, 0, 0, src_width, src_height);
+                            object->extracted = TRUE;
+                            evas_object_del(image_object);
+                            image_object = newobj;
+                            evas_object_move(image_object, dest_x, dest_y);
+                            if (dest_width > 0 && dest_height > 0) {
+                                evas_object_image_fill_set(image_object, 0, 0, dest_width,dest_height);
+                                evas_object_resize(image_object, dest_width, dest_height);
+                            }
+    #else
+                            //evas_object_move(image_object, src_x - dest_x, src_y - dest_y);
+                            evas_object_move(image_object, dest_x - src_x, dest_y - src_y);
+                            evas_object_image_fill_set(image_object, 0, 0, image_width, image_height);
+                            evas_object_resize(image_object, image_width, image_height);
 
-                    //evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_DOWN, mouse_press, window);
-                    /*evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_UP, mouse_release, window);
-                    evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_MOVE, mouse_move, window);*/
+                            Evas_Object *clipper = evas_object_rectangle_add(evas);
+                            evas_object_color_set(clipper, 255, 255, 255, 255);
+                            //evas_object_color_set(clipper, 0, 0, 0, 0);
+                            evas_object_move(clipper, dest_x, dest_y);
+                            evas_object_resize(clipper, dest_width, dest_height);
+                            evas_object_clip_set(image_object, clipper);
+                            evas_object_show(clipper);
 
-                    object->object = image_object;
-                    object->type = EFLOBJECT_IMAGE;
-                    object->position.x = dest_x;
-                    object->position.y = dest_y;
-                    object->position.width = dest_width;
-                    object->position.height = dest_height;
-                    object->etc_info = image_path;
-                    object->data = clip_object;
+                            clip_object = new EFLObject;
+                            clip_object->object = clipper;
+                            clip_object->type = EFLOBJECT_CLIPOBJECT;
+                            clip_object->position.x = dest_x;
+                            clip_object->position.y = dest_y;
+                            clip_object->position.width = dest_width;
+                            clip_object->position.height = dest_height;
+                            clip_object->etc_info = image_path;
+                            clip_object->extracted = FALSE;
+                            clip_object->data = NULL;
+    #endif
+                        } else {
+                            evas_object_move(image_object, dest_x, dest_y);
+                            if (dest_width > 0 && dest_height > 0) {
+                                evas_object_image_fill_set(image_object, 0, 0, dest_width,dest_height);
+                                evas_object_resize(image_object, dest_width, dest_height);
+                            }
+                        }
+                        evas_object_raise(image_object);
+                        evas_object_show(image_object);
 
-                    targetctx->etc_info = eina_list_append((Eina_List*)(targetctx->etc_info), object);
-                    if (clip_object) {
-                        targetctx->etc_info = eina_list_append((Eina_List*)(targetctx->etc_info), clip_object);
-                    }
+                        //evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_DOWN, mouse_press, window);
+                        /*evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_UP, mouse_release, window);
+                        evas_object_event_callback_add((Evas_Object*)image_object, EVAS_CALLBACK_MOUSE_MOVE, mouse_move, window);*/
 
-                    /* FIXME : this is for placing the background image at the lowest depth */
-                    sclint window_layer = 29000;
-                    if (!windows->is_base_window(reinterpret_cast<sclwindow>(draw_ctx))) {
-                        window_layer = 29010;
-                    }
-                    //SclRectangle rt;
-                    //windows->get_window_rect(window, &rt);
-                    //if (rt.width == dest_width && rt.height == dest_height) {
-                    if (winctx->geometry.width == dest_width && winctx->geometry.height == dest_height) {
-                        //evas_object_lower(image_object);
-                        evas_object_layer_set(image_object, window_layer + 0);
-                    } else {
-                        evas_object_layer_set(image_object, window_layer + 1);
+                        object->object = image_object;
+                        object->type = EFLOBJECT_IMAGE;
+                        object->position.x = dest_x;
+                        object->position.y = dest_y;
+                        object->position.width = dest_width;
+                        object->position.height = dest_height;
+                        object->etc_info = image_path;
+                        object->data = clip_object;
+
+                        if (is_highlight_ui) {
+                            delete object;
+                        } else {
+                            target_window_context->etc_info =
+                                eina_list_append((Eina_List*)(target_window_context->etc_info), object);
+                            if (clip_object) {
+                                target_window_context->etc_info =
+                                    eina_list_append((Eina_List*)(target_window_context->etc_info), clip_object);
+                            }
+                        }
+
+                        /* FIXME : this is for placing the background image at the lowest depth */
+                        sclint window_layer = 29000;
+                        if (!windows->is_base_window(reinterpret_cast<sclwindow>(draw_ctx))) {
+                            window_layer = 29010;
+                        }
+                        //SclRectangle rt;
+                        //windows->get_window_rect(window, &rt);
+                        //if (rt.width == dest_width && rt.height == dest_height) {
+                        if (window_context->geometry.width == dest_width &&
+                            window_context->geometry.height == dest_height) {
+                            //evas_object_lower(image_object);
+                            evas_object_layer_set(image_object, window_layer + 0);
+                        } else {
+                            evas_object_layer_set(image_object, window_layer + 1);
+                        }
                     }
                 }
             }
@@ -438,17 +465,17 @@ CSCLGraphicsImplEfl::draw_text(sclwindow window, const scldrawctx draw_ctx, cons
     SCL_DEBUG();
 
     CSCLWindows *windows = CSCLWindows::get_instance();
-    SclWindowContext *winctx = NULL;
-    SclWindowContext *targetctx = NULL;
+    SclWindowContext *window_context = NULL;
+    SclWindowContext *target_window_context = NULL;
 
     if (windows && window) {
-        //winctx = windows->get_window_context(window, FALSE);
-        winctx = windows->get_window_context(window);
-        //targetctx = windows->get_window_context(draw_ctx, FALSE);
-        targetctx = windows->get_window_context(draw_ctx);
+        //window_context = windows->get_window_context(window, FALSE);
+        window_context = windows->get_window_context(window);
+        //target_window_context = windows->get_window_context(draw_ctx, FALSE);
+        target_window_context = windows->get_window_context(draw_ctx);
     }
 
-    if (winctx && targetctx && str && windows) {
+    if (window_context && target_window_context && str && windows) {
         if (strlen(str) > 0) {
 #ifdef DO_NOT_MOVE_MAGNIFIER_WINDOW
             if (window == windows->get_magnifier_window()) {
@@ -518,7 +545,7 @@ CSCLGraphicsImplEfl::draw_text(sclwindow window, const scldrawctx draw_ctx, cons
             if (object) {
                 object->extracted = FALSE;
                 Evas_Object *window_object = (Evas_Object*)window;
-                if (winctx->is_virtual) {
+                if (window_context->is_virtual) {
                     window_object = static_cast<Evas_Object*>(windows->get_base_window());
                 }
                 Evas *evas = evas_object_evas_get(window_object);
@@ -607,7 +634,7 @@ CSCLGraphicsImplEfl::draw_text(sclwindow window, const scldrawctx draw_ctx, cons
                     object->position.y = pos_y;
                     object->position.width = width;
                     object->position.height = height;
-                    object->etc_info = (char*)str;
+                    object->etc_info = str;
                     object->data = st;
 
                     sclint calwidth, calheight;
@@ -643,7 +670,7 @@ CSCLGraphicsImplEfl::draw_text(sclwindow window, const scldrawctx draw_ctx, cons
                             color.r, color.g, color.b, color.a, padding_x, padding_x);
                         evas_textblock_style_set(st, strStyle);
                         evas_object_textblock_style_set(text_object, st);
-                        char *markup = evas_textblock_text_utf8_to_markup(text_object, str);
+                        markup = evas_textblock_text_utf8_to_markup(text_object, str);
                         if (markup) {
                             evas_object_textblock_text_markup_set(text_object, markup);
                             free(markup);
@@ -679,7 +706,8 @@ CSCLGraphicsImplEfl::draw_text(sclwindow window, const scldrawctx draw_ctx, cons
                     /*evas_object_event_callback_add((Evas_Object*)text_object, EVAS_CALLBACK_MOUSE_UP, mouse_release, window);
                     evas_object_event_callback_add((Evas_Object*)text_object, EVAS_CALLBACK_MOUSE_MOVE, mouse_move, window);*/
 
-                    targetctx->etc_info = eina_list_append((Eina_List*)(targetctx->etc_info), object);
+                    target_window_context->etc_info =
+                        eina_list_append((Eina_List*)(target_window_context->etc_info), object);
 
                     sclint window_layer = 29000;
                     if (!windows->is_base_window(reinterpret_cast<sclwindow>(draw_ctx))) {
@@ -741,23 +769,23 @@ CSCLGraphicsImplEfl::draw_rectangle(sclwindow window, const scldrawctx draw_ctx,
     CSCLResourceCache *cache = CSCLResourceCache::get_instance();
     CSCLWindows *windows = CSCLWindows::get_instance();
     CSCLUtils *utils = CSCLUtils::get_instance();
-    SclWindowContext *winctx = NULL;
-    SclWindowContext *targetctx = NULL;
+    SclWindowContext *window_context = NULL;
+    SclWindowContext *target_window_context = NULL;
 
     if (windows && window) {
-        //winctx = windows->get_window_context(window, FALSE);
-        winctx = windows->get_window_context(window);
-        //targetctx = windows->get_window_context(draw_ctx, FALSE);
-        targetctx = windows->get_window_context(draw_ctx);
+        //window_context = windows->get_window_context(window, FALSE);
+        window_context = windows->get_window_context(window);
+        //target_window_context = windows->get_window_context(draw_ctx, FALSE);
+        target_window_context = windows->get_window_context(draw_ctx);
     }
 
-    if (winctx && utils && cache && windows && targetctx) {
+    if (window_context && utils && cache && windows && target_window_context) {
         EFLObject *object = new EFLObject;
         if (object) {
             Evas_Object *window_object = (Evas_Object*)window;
-            if (winctx->is_virtual) {
+            if (window_context->is_virtual) {
                 window_object = static_cast<Evas_Object*>(windows->get_base_window());
-            //    //winctx = windows->get_window_context(windows->get_base_window());
+            //    //window_context = windows->get_window_context(windows->get_base_window());
             }
 
             Evas *evas = evas_object_evas_get(window_object);
@@ -783,7 +811,8 @@ CSCLGraphicsImplEfl::draw_rectangle(sclwindow window, const scldrawctx draw_ctx,
             object->etc_info = NULL;
             object->data = NULL;
 
-            targetctx->etc_info = eina_list_append((Eina_List*)(targetctx->etc_info), object);
+            target_window_context->etc_info =
+                eina_list_append((Eina_List*)(target_window_context->etc_info), object);
 
             sclint window_layer = 29000;
             if (!windows->is_base_window(reinterpret_cast<sclwindow>(draw_ctx))) {

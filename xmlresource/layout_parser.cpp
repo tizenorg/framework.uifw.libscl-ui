@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -81,6 +81,7 @@ using namespace std;
 #define LAYOUT_BACKGROUND_NORMAL_TAG "button_normal"
 #define LAYOUT_BACKGROUND_PRESSED_TAG "button_pressed"
 #define LAYOUT_BACKGROUND_DISABLED_TAG "button_disabled"
+#define LAYOUT_BACKGROUND_TOGGLED_TAG "button_toggled"
 
 #define LAYOUT_ROW_TAG "row"
 #define LAYOUT_ROW_SUBLAYOUT_ID_ATTRIBUTE "sub_layout"
@@ -182,7 +183,7 @@ class LayoutParserImpl {
         int get_multitouch_type_prop(const xmlNodePtr cur_node);
         int get_extra_option_prop(const xmlNodePtr cur_node);
 
-        int parsing_layout_table(char **layout_files, int size);
+        int parsing_layout_table(const vector<string> &layout_file_name);
         void parsing_layout_node(const xmlNodePtr cur_node, const PSclLayout cur_rec_layout, int layout_no);
         void loading_coordinate_resources(const xmlNodePtr cur_node, const PSclLayout cur_rec_layout, int layout_no);
         void parsing_background(const xmlNodePtr cur_node, const PSclLayout);
@@ -218,7 +219,7 @@ class LayoutParserImpl {
     private:
         int m_layout_size;
         SclLayout m_layout_table[MAX_SCL_LAYOUT];
-        sclchar *m_layout_files[MAX_SCL_LAYOUT];
+        vector<string> m_file_names;
         SclLayoutKeyCoordinate* m_key_coordinate_pointer_frame[MAX_SCL_LAYOUT][MAX_KEY];
 
         std::vector<xmlChar*> m_vec_layout_strings;
@@ -229,7 +230,6 @@ class LayoutParserImpl {
 
 LayoutParserImpl::LayoutParserImpl() {
     m_layout_size = 0;
-    memset(m_layout_files, 0x00, sizeof(char*) * MAX_SCL_LAYOUT);
     memset(m_layout_table, 0x00, sizeof(SclLayout) * MAX_SCL_LAYOUT);
     memset(m_key_coordinate_pointer_frame, 0x00, sizeof(SclLayoutKeyCoordinatePointer) * MAX_SCL_LAYOUT * MAX_KEY);
 }
@@ -239,11 +239,6 @@ LayoutParserImpl::~LayoutParserImpl() {
         for (int j = 0; j < MAX_KEY; ++j) {
             free(m_key_coordinate_pointer_frame[i][j]);
             m_key_coordinate_pointer_frame[i][j] = NULL;
-        }
-
-        if (m_layout_files[i]) {
-            free(m_layout_files[i]);
-            m_layout_files[i] = NULL;
         }
     }
 
@@ -257,12 +252,10 @@ LayoutParserImpl::load(int layout_id) {
         xmlDocPtr doc;
         xmlNodePtr cur_node;
 
-        char input_file[_POSIX_PATH_MAX] = {0};
-        snprintf(input_file, _POSIX_PATH_MAX, "%s/%s", m_dir.c_str(), m_layout_files[layout_id]);
-
-        doc = xmlReadFile(input_file, NULL, 0);
+        string input_file = m_dir + "/" + m_file_names[layout_id];
+        doc = xmlReadFile(input_file.c_str(), NULL, 0);
         if (doc == NULL) {
-            SCLLOG(SclLog::ERROR, "Could not load file: %s.", input_file);
+            SCLLOG(SclLog::ERROR, "Could not load file: %s.", input_file.c_str());
             exit(1);
         }
 
@@ -324,7 +317,7 @@ LayoutParserImpl::add_layout_string(xmlChar* newstr) {
 
 void
 LayoutParserImpl::release_layout_strings() {
-    for(int loop = 0;loop < m_vec_layout_strings.size();loop++) {
+    for(size_t loop = 0; loop < m_vec_layout_strings.size(); loop++) {
         if (m_vec_layout_strings[loop]) {
             xmlFree(m_vec_layout_strings[loop]);
         }
@@ -341,7 +334,7 @@ LayoutParserImpl::add_key_string(xmlChar* newstr) {
 
 void
 LayoutParserImpl::release_key_strings() {
-    for(int loop = 0;loop < m_vec_key_strings.size();loop++) {
+    for(size_t loop = 0; loop < m_vec_key_strings.size(); loop++) {
         if (m_vec_key_strings[loop]) {
             xmlFree(m_vec_key_strings[loop]);
         }
@@ -351,18 +344,14 @@ LayoutParserImpl::release_key_strings() {
 
 int
 LayoutParserImpl::get_layout_index(const char *name) {
-    int ret = NOT_USED;
-    if (name) {
-        for(int loop = 0;loop < MAX_SCL_LAYOUT && ret == NOT_USED;loop++) {
-            if (m_layout_table[loop].name) {
-                if (strcmp(m_layout_table[loop].name, name) == 0) {
-                    ret = loop;
-                    break;
-                }
-            }
-        }
+    string strName = (string)name;
+    vector<string>::iterator it;
+    // make sure that the m_file_names are sorted.
+    it = lower_bound(m_file_names.begin(), m_file_names.end(), strName);
+    if (it != m_file_names.end() && *it == strName) {
+        return it-m_file_names.begin();
     }
-    return ret;
+    return NOT_USED;
 }
 
 PSclLayout
@@ -381,14 +370,15 @@ LayoutParserImpl::get_key_coordinate_pointer_frame() {
 }
 
 int
-LayoutParserImpl::parsing_layout_table(char** file, int file_num) {
-    m_layout_size = file_num;
-    for (int index = 0; index < file_num; ++index) {
-        m_layout_files[index] = strdup(file[index]);
+LayoutParserImpl::parsing_layout_table(const vector<string> &vec_file) {
+    m_file_names = vec_file;
+    m_layout_size = vec_file.size();
+    vector<string>::const_iterator it;
+    for (it = vec_file.begin(); it != vec_file.end(); it++) {
         xmlDocPtr doc;
         xmlNodePtr cur_node;
 
-        string input_file = m_dir + "/" + m_layout_files[index];
+        string input_file = m_dir + "/" + *it;
         doc = xmlReadFile(input_file.c_str(), NULL, 0);
         if (doc == NULL) {
             SCLLOG(SclLog::DEBUG, "Could not load file: %s.", input_file.c_str());
@@ -408,9 +398,10 @@ LayoutParserImpl::parsing_layout_table(char** file, int file_num) {
             return -1;
         }
 
-        PSclLayout cur_rec_layout = m_layout_table + index;
-        parsing_layout_node(cur_node, cur_rec_layout, index);
-        cur_rec_layout->name = (sclchar*)strdup(m_layout_files[index]);
+        int layout_id = it - vec_file.begin();
+        PSclLayout cur_rec_layout = &(m_layout_table[layout_id]);
+        parsing_layout_node(cur_node, cur_rec_layout, layout_id);
+        cur_rec_layout->name = (sclchar*)strdup(it->c_str());
 
         xmlFreeDoc(doc);
     }
@@ -426,19 +417,21 @@ LayoutParserImpl::parsing_background(
 
     xmlNodePtr child_node = cur_node->xmlChildrenNode;
     while ( child_node != NULL) {
-        if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )"button_normal") ) {
+        if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )LAYOUT_BACKGROUND_NORMAL_TAG) ) {
             xmlChar *key = xmlNodeGetContent(child_node);
             cur_layout->image_path[BUTTON_STATE_NORMAL] = (char *)key;
             add_layout_string(key);
-        }
-        else if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )"button_pressed") ) {
+        } else if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )LAYOUT_BACKGROUND_PRESSED_TAG) ) {
             xmlChar *key = xmlNodeGetContent(child_node);
             cur_layout->image_path[BUTTON_STATE_PRESSED] = (char *)key;
             add_layout_string(key);
-        }
-        else if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )"button_disabled") ) {
+        } else if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )LAYOUT_BACKGROUND_DISABLED_TAG ) ) {
             xmlChar *key = xmlNodeGetContent(child_node);
             cur_layout->image_path[BUTTON_STATE_DISABLED] = (char *)key;
+            add_layout_string(key);
+        } else if ( 0 == xmlStrcmp(child_node->name, (const xmlChar* )LAYOUT_BACKGROUND_TOGGLED_TAG ) ) {
+            xmlChar *key = xmlNodeGetContent(child_node);
+            cur_layout->image_path[BUTTON_STATE_TOGGLED] = (char *)key;
             add_layout_string(key);
         }
 
@@ -499,6 +492,7 @@ LayoutParserImpl::set_default_layout_value(const PSclLayout cur_layout) {
     cur_layout->image_path[BUTTON_STATE_NORMAL]      = NULL;
     cur_layout->image_path[BUTTON_STATE_PRESSED]     = NULL;
     cur_layout->image_path[BUTTON_STATE_DISABLED]    = NULL;
+    cur_layout->image_path[BUTTON_STATE_TOGGLED]     = NULL;
 
     cur_layout->use_sw_button = false;
     cur_layout->use_magnifier_window = false;
@@ -675,10 +669,7 @@ LayoutParserImpl::parsing_layout_node(
 
     set_default_layout_value(cur_rec_layout);
 
-    int row_y = 0;
     xmlChar* key;
-
-    SclLayoutKeyCoordinatePointer *cur_key = &m_key_coordinate_pointer_frame[layout_no][0];
 
     if (equal_prop(cur_node, LAYOUT_DIRECTION_ATTRIBUTE,
         LAYOUT_DIRECTION_ATTRIBUTE_LANDSCAPE_VALUE)) {
@@ -759,7 +750,6 @@ LayoutParserImpl::loading_coordinate_resources(
     assert(cur_node != NULL);
 
     int row_y = 0;
-    xmlChar* key;
 
     SclLayoutKeyCoordinatePointer *cur_key = &m_key_coordinate_pointer_frame[layout_no][0];
 
@@ -838,7 +828,7 @@ LayoutParserImpl::get_drag_state_prop(const xmlNodePtr cur_node) {
 
     int drag_state = SCL_DRAG_STATE_NONE;
 
-    for(int i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
+    for(size_t i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
         if (0 == strcmp((const char*)key, table[i].key))
         {
             drag_state = table[i].value;
@@ -860,7 +850,6 @@ LayoutParserImpl::get_shift_state_prop(const xmlNodePtr cur_node) {
         shift_state = SCL_SHIFT_STATE_ON;
     } else if (equal_prop(cur_node, "shift", "off")) {
         shift_state = SCL_SHIFT_STATE_OFF;
-
     } else if (equal_prop(cur_node, "shift", "loc")) {
         shift_state = SCL_SHIFT_STATE_LOCK;
     }
@@ -875,9 +864,10 @@ LayoutParserImpl::get_button_state_prop(const xmlNodePtr cur_node) {
         button_state = BUTTON_STATE_PRESSED;
     } else if (equal_prop(cur_node, "button", "normal")) {
         button_state = BUTTON_STATE_NORMAL;
-    }
-    else if (equal_prop(cur_node, "button", "disabled")) {
+    } else if (equal_prop(cur_node, "button", "disabled")) {
         button_state = BUTTON_STATE_DISABLED;
+    } else if (equal_prop(cur_node, "button", "toggled")) {
+        button_state = BUTTON_STATE_TOGGLED;
     }
     return button_state;
 }
@@ -901,7 +891,7 @@ LayoutParserImpl::get_multitouch_type_prop(const xmlNodePtr cur_node) {
 
     int type = SCL_MULTI_TOUCH_TYPE_EXCLUSIVE;
 
-    for(int i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
+    for(size_t i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
         if (0 == strcmp((const char*)key, table[i].key))
         {
             type = table[i].value;
@@ -936,7 +926,7 @@ LayoutParserImpl::get_extra_option_prop(
 
     int type = DIRECTION_EXTRA_OPTION_4_DIRECTIONS;
 
-    for(int i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
+    for(size_t i = 0; i < sizeof(table)/sizeof(Match_Struct); ++i) {
         if (0 == strcmp((const char*)key, table[i].key))
         {
             type = table[i].value;
@@ -1442,11 +1432,11 @@ LayoutParser::get_instance() {
 }
 
 int
-LayoutParser::init(const char* dir, char **layout_files, int size) {
+LayoutParser::init(const char* dir, const vector<string> &vec_file) {
     int ret = -1;
-    if (dir && layout_files) {
+    if (dir) {
         m_impl->set_directory(dir);
-        ret = m_impl->parsing_layout_table(layout_files, size);
+        ret = m_impl->parsing_layout_table(vec_file);
     }
 
     return ret;

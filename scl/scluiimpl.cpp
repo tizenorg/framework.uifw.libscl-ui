@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -26,6 +26,8 @@
 #include "sclerroradjustment.h"
 #include "sclres_manager.h"
 #include "scleventhandler.h"
+#include "sclkeyfocushandler.h"
+#include "sclanimator.h"
 
 using namespace scl;
 
@@ -113,8 +115,6 @@ CSCLUIImpl::show()
 {
     SCL_DEBUG();
 
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLUtils *utils = CSCLUtils::get_instance();
         CSCLWindows *windows = CSCLWindows::get_instance();
@@ -125,8 +125,6 @@ CSCLUIImpl::show()
             //if (auto_relocate) {
             if (TRUE) {
                 /* Let's relocate our base window - bottomed center aligned */
-                sclint width, height;
-                //get_layout_size(&width, &height);
                 SclRectangle rect = get_main_window_rect();
 
                 sclint scrx, scry;
@@ -154,8 +152,6 @@ CSCLUIImpl::hide()
 {
     SCL_DEBUG();
 
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLController *controller = CSCLController::get_instance();
         CSCLWindows *windows = CSCLWindows::get_instance();
@@ -175,8 +171,6 @@ void
 CSCLUIImpl::set_ui_event_callback(ISCLUIEventCallback *callback, const sclchar *input_mode)
 {
     SCL_DEBUG();
-
-    sclboolean ret = FALSE;
 
     if (m_initialized) {
         CSCLEventHandler *handler = CSCLEventHandler::get_instance();
@@ -203,6 +197,7 @@ CSCLUIImpl::set_input_mode(const sclchar *input_mode)
         CSCLController *controller = CSCLController::get_instance();
         CSCLWindows *windows = CSCLWindows::get_instance();
         CSCLEventHandler *handler = CSCLEventHandler::get_instance();
+        CSCLKeyFocusHandler* focus_handler = CSCLKeyFocusHandler::get_instance();
 
         scl8 mode = NOT_USED;
 
@@ -211,14 +206,112 @@ CSCLUIImpl::set_input_mode(const sclchar *input_mode)
             mode = sclres_manager->get_inputmode_id(input_mode);
         }
 
-        if (controller && windows && handler && mode != NOT_USED) {
+        if (controller && windows && handler && focus_handler && mode != NOT_USED) {
             handler->set_input_mode(input_mode);
             ret = controller->process_input_mode_change(mode);
             windows->update_window(windows->get_base_window());
+            focus_handler->init_key_index();
         }
     }
 
     SCL_DEBUG_ELAPASED_TIME_END();
+    return ret;
+}
+
+/**
+ * Returns the current input mode
+ */
+const sclchar*
+CSCLUIImpl::get_input_mode()
+{
+    SCL_DEBUG();
+
+    const sclchar *ret = NULL;
+    if (m_initialized) {
+        CSCLContext *context = CSCLContext::get_instance();
+        SclResParserManager *sclres_manager = SclResParserManager::get_instance();
+        if (context && sclres_manager) {
+            scl8 inputmode_id = context->get_input_mode();
+            ret = sclres_manager->get_inputmode_name(inputmode_id);
+        }
+    }
+    return ret;
+}
+
+
+/**
+ * Sets the given popup window's input mode to the given mode
+ * @Usage
+ * gCore->set_input_mode("INPUT_MODE_SYMBOL");
+ */
+sclboolean
+CSCLUIImpl::set_popup_input_mode(sclwindow window, const sclchar *input_mode)
+{
+    SCL_DEBUG();
+    SCL_DEBUG_ELAPASED_TIME_START();
+
+    sclboolean ret = FALSE;
+
+    if (m_initialized) {
+        CSCLWindows *windows = CSCLWindows::get_instance();
+        CSCLResourceCache *cache = CSCLResourceCache::get_instance();
+        CSCLContext *context = CSCLContext::get_instance();
+
+        scl8 mode = NOT_USED;
+        sclshort layout = NOT_USED;
+        SclWindowContext *window_context = NULL;
+
+        SclResParserManager *sclres_manager = SclResParserManager::get_instance();
+        if (sclres_manager && windows && context) {
+            SCLDisplayMode display_mode = context->get_display_mode();
+            PSclInputModeConfigure sclres_input_mode_configure = sclres_manager->get_input_mode_configure_table();
+            mode = sclres_manager->get_inputmode_id(input_mode);
+            window_context = windows->get_window_context(window);
+            if (sclres_input_mode_configure &&
+                scl_check_arrindex(mode, MAX_SCL_INPUT_MODE) &&
+                scl_check_arrindex(display_mode, DISPLAYMODE_MAX)) {
+                    layout = sclres_manager->get_layout_id(sclres_input_mode_configure[mode].layouts[display_mode]);
+            }
+        }
+
+        if (cache && windows && window_context) {
+            if (mode != NOT_USED && mode != window_context->inputmode && layout != NOT_USED) {
+                window_context->inputmode = mode;
+                window_context->layout = layout;
+                cache->recompute_layout(window);
+                windows->update_window(window);
+                ret = TRUE;
+            }
+        }
+    }
+
+    SCL_DEBUG_ELAPASED_TIME_END();
+    return ret;
+}
+
+/**
+ * Returns the given window's input mode
+ */
+const sclchar*
+CSCLUIImpl::get_popup_input_mode(sclwindow window)
+{
+    SCL_DEBUG();
+
+    const sclchar *ret = NULL;
+
+    if (m_initialized) {
+        CSCLWindows *windows = CSCLWindows::get_instance();
+        SclResParserManager *sclres_manager = SclResParserManager::get_instance();
+        if (windows && sclres_manager) {
+            SclWindowContext *window_context = windows->get_window_context(window);
+            if (window_context) {
+                if (scl_check_arrindex(window_context->inputmode, MAX_SCL_INPUT_MODE)) {
+                    ret = sclres_manager->get_inputmode_name(window_context->inputmode);
+                }
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -243,8 +336,6 @@ CSCLUIImpl::set_rotation(SCLRotation rotation)
             //if (auto_relocate) {
             if (TRUE) {
                 /* Let's relocate our base window - bottomed center aligned */
-                sclint width, height;
-                //get_layout_size(&width, &height);
                 SclRectangle rect = get_main_window_rect();
 
                 sclint scrx, scry;
@@ -298,28 +389,6 @@ CSCLUIImpl::get_display_mode()
 }
 
 /**
- * Returns the current input mode
- */
-const sclchar*
-CSCLUIImpl::get_input_mode()
-{
-    SCL_DEBUG();
-
-    const sclchar *ret = NULL;
-    if (m_initialized) {
-        CSCLContext *context = CSCLContext::get_instance();
-        SclResParserManager *sclres_manager = SclResParserManager::get_instance();
-        if (context && sclres_manager) {
-            scl8 inputmode_id = context->get_input_mode();
-            ret = sclres_manager->get_inputmode_name(inputmode_id);
-        }
-    }
-    return ret;
-}
-
-
-
-/**
  * Sets a private key to the current context
  * The other properties except given parameters will keep to the orginal value.
  * @Usage
@@ -336,7 +405,7 @@ CSCLUIImpl::set_private_key(const sclchar* custom_id, sclchar* label, sclchar* i
         CSCLWindows *windows = CSCLWindows::get_instance();
         CSCLResourceCache *cache = CSCLResourceCache::get_instance();
         if (windows && cache) {
-            ret = cache->set_private_key((sclchar*)custom_id, label, imagelabel, imagebg,
+            ret = cache->set_private_key(custom_id, label, imagelabel, imagebg,
                 key_event, key_value, fRedraw, windows->get_update_pending());
         }
     }
@@ -351,8 +420,6 @@ void
 CSCLUIImpl::unset_private_key(const sclchar* custom_id)
 {
     SCL_DEBUG();
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLResourceCache *cache = CSCLResourceCache::get_instance();
         if (cache) {
@@ -418,7 +485,11 @@ CSCLUIImpl::set_shift_state(SCLShiftState state)
         /*inform the client that the shift state changed */
         CSCLEventHandler *handler = CSCLEventHandler::get_instance();
         if (handler) {
-            SCLEventReturnType ret = handler->on_event_notification(SCL_UINOTITYPE_SHIFT_STATE_CHANGE, state);
+            SclNotiShiftStateChangeDesc desc;
+            desc.ui_event_desc = NULL;
+            desc.shift_state = state;
+
+            SCLEventReturnType ret = handler->on_event_notification(SCL_UINOTITYPE_SHIFT_STATE_CHANGE, &desc);
             if (ret == SCL_EVENT_DONE) {
                 return;
             }
@@ -443,6 +514,36 @@ CSCLUIImpl::set_shift_state(SCLShiftState state)
     }
 }
 
+sclboolean
+CSCLUIImpl::get_caps_lock_mode()
+{
+    sclboolean ret = FALSE;
+    if (m_initialized) {
+        CSCLContext *context = CSCLContext::get_instance();
+        if (context) {
+            ret = context->get_caps_lock_mode();
+        }
+    }
+    return ret;
+}
+
+void
+CSCLUIImpl::set_caps_lock_mode(sclboolean mode)
+{
+    if (m_initialized) {
+        CSCLContext *context = CSCLContext::get_instance();
+        CSCLWindows *windows = CSCLWindows::get_instance();
+
+        if (context && windows) {
+            sclboolean current_mode = context->get_caps_lock_mode();
+            if (mode != current_mode) {
+                context->set_caps_lock_mode(mode);
+                windows->update_window(windows->get_base_window());
+            }
+        }
+    }
+}
+
 /**
  * This function will be called by the user which uses SCL when the context of the focus application is changed
  * ISE user should explicitly call this function when the context of application is changed.
@@ -453,8 +554,6 @@ void
 CSCLUIImpl::notify_app_focus_changed()
 {
     SCL_DEBUG();
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLController *controller = CSCLController::get_instance();
         if (controller) {
@@ -467,8 +566,6 @@ void
 CSCLUIImpl::reset_popup_timeout()
 {
     SCL_DEBUG();
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLEvents *events = CSCLEvents::get_instance();
         CSCLWindows *windows = CSCLWindows::get_instance();
@@ -479,14 +576,14 @@ CSCLUIImpl::reset_popup_timeout()
             sclbyte index = 0;
             sclboolean timerset = FALSE;
             sclwindow window = SCLWINDOW_INVALID;
-            SclWindowContext *winctx = NULL;
+            SclWindowContext *window_context = NULL;
             do {
                 window = windows->get_nth_window_in_Z_order_list(index);
-                //winctx = windows->get_window_context(window, FALSE);
-                winctx = windows->get_window_context(window);
-                if (winctx) {
-                    if (winctx->timeout != 0) {
-                        events->create_timer(SCL_TIMER_POPUP_TIMEOUT, winctx->timeout, 0, TRUE);
+                //window_context = windows->get_window_context(window, FALSE);
+                window_context = windows->get_window_context(window);
+                if (window_context) {
+                    if (window_context->timeout != 0) {
+                        events->create_timer(SCL_TIMER_POPUP_TIMEOUT, window_context->timeout, 0, TRUE);
                         timerset = TRUE;
                     }
                     index++;
@@ -500,8 +597,6 @@ void
 CSCLUIImpl::close_all_popups()
 {
     SCL_DEBUG();
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLWindows *windows = CSCLWindows::get_instance();
         if (windows) {
@@ -610,24 +705,52 @@ CSCLUIImpl::set_custom_scale_rate(sclfloat x, sclfloat y)
 }
 
 /**
+ * Sets the custom starting coordinates for drawing the keyboard's content
+ */
+void
+CSCLUIImpl::set_custom_starting_coordinates(sclint x, sclint y)
+{
+    if (m_initialized) {
+        CSCLResourceCache *cache = CSCLResourceCache::get_instance();
+        if (cache) {
+            cache->set_custom_starting_coordinates(x, y);
+        }
+    }
+}
+
+/**
+ * Sets the custom starting coordinates option for drawing the keyboard's content
+ */
+void
+CSCLUIImpl::set_custom_starting_coordinates_option(SCLStartingCoordinatesOption option)
+{
+    if (m_initialized) {
+        CSCLResourceCache *cache = CSCLResourceCache::get_instance();
+        if (cache) {
+            cache->set_custom_starting_coordinates_option(option);
+        }
+    }
+}
+
+/**
  * Returns the scl base window size
  */
 SclRectangle
 CSCLUIImpl::get_main_window_rect()
 {
-    SclRectangle ret = {0};
+    SclRectangle ret = {0,0,0,0};
 
     if (m_initialized) {
         CSCLResourceCache *cache = CSCLResourceCache::get_instance();
         CSCLWindows *windows = CSCLWindows::get_instance();
         if (cache && windows) {
             //const SclLayout *layout  = cache->get_cur_layout(windows->get_base_window());
-            SclWindowContext *winctx = windows->get_window_context(windows->get_base_window());
-            if (winctx) {
-                ret.x = winctx->geometry.x;
-                ret.y = winctx->geometry.y;
-                ret.width = winctx->geometry.width;
-                ret.height = winctx->geometry.height;
+            SclWindowContext *window_context = windows->get_window_context(windows->get_base_window());
+            if (window_context) {
+                ret.x = window_context->geometry.x;
+                ret.y = window_context->geometry.y;
+                ret.width = window_context->geometry.width;
+                ret.height = window_context->geometry.height;
             }
         }
     }
@@ -641,7 +764,7 @@ CSCLUIImpl::get_main_window_rect()
 SclSize
 CSCLUIImpl::get_input_mode_size(const sclchar *input_mode, SCLDisplayMode display_mode)
 {
-    SclSize ret = {0};
+    SclSize ret = {0,0};
 
     if (m_initialized) {
         CSCLUtils *utils = CSCLUtils::get_instance();
@@ -669,8 +792,6 @@ CSCLUIImpl::get_input_mode_size(const sclchar *input_mode, SCLDisplayMode displa
 void
 CSCLUIImpl::get_screen_resolution(sclint *width, sclint *height)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLUtils *utils = CSCLUtils::get_instance();
         if (utils && width && height) {
@@ -684,8 +805,6 @@ CSCLUIImpl::get_screen_resolution(sclint *width, sclint *height)
 void
 CSCLUIImpl::set_debug_mode(SCLDebugMode mode)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLController *controller = CSCLController::get_instance();
         if (controller) {
@@ -710,8 +829,6 @@ CSCLUIImpl::get_debug_mode()
 void
 CSCLUIImpl::set_update_pending(sclboolean pend)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLWindows *windows = CSCLWindows::get_instance();
         if (windows) {
@@ -723,8 +840,6 @@ CSCLUIImpl::set_update_pending(sclboolean pend)
 void
 CSCLUIImpl::enable_button(const sclchar* custom_id, sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLResourceCache *cache = CSCLResourceCache::get_instance();
         if (cache) {
@@ -834,8 +949,6 @@ CSCLUIImpl::set_button_delay_duration(scllong msc)
 void
 CSCLUIImpl::enable_magnifier(sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLContext *context = CSCLContext::get_instance();
         if (context) {
@@ -847,8 +960,6 @@ CSCLUIImpl::enable_magnifier(sclboolean enabled)
 void
 CSCLUIImpl::enable_sound(sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLContext *context = CSCLContext::get_instance();
         if (context) {
@@ -860,8 +971,6 @@ CSCLUIImpl::enable_sound(sclboolean enabled)
 void
 CSCLUIImpl::enable_vibration(sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLContext *context = CSCLContext::get_instance();
         if (context) {
@@ -873,8 +982,6 @@ CSCLUIImpl::enable_vibration(sclboolean enabled)
 void
 CSCLUIImpl::enable_tts(sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLContext *context = CSCLContext::get_instance();
         if (context) {
@@ -886,12 +993,47 @@ CSCLUIImpl::enable_tts(sclboolean enabled)
 void
 CSCLUIImpl::enable_shift_multi_touch(sclboolean enabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLContext *context = CSCLContext::get_instance();
         if (context) {
             context->set_shift_multi_touch_enabled(enabled);
+        }
+    }
+}
+
+void
+CSCLUIImpl::enable_highlight_ui(sclboolean enabled)
+{
+    if (m_initialized) {
+        CSCLContext *context = CSCLContext::get_instance();
+        CSCLWindows *windows = CSCLWindows::get_instance();
+        if (context) {
+            context->set_highlight_ui_enabled(enabled);
+
+            sclwindow window = windows->get_nth_window_in_Z_order_list(SCL_WINDOW_Z_TOP);
+            windows->update_window(window);
+            if (!(windows->is_base_window(window))) {
+                windows->update_window(windows->get_base_window());
+            }
+        }
+    }
+}
+
+void
+CSCLUIImpl::enable_highlight_ui_animation(sclboolean enabled)
+{
+    if (m_initialized) {
+        CSCLContext *context = CSCLContext::get_instance();
+        CSCLAnimator *animator = CSCLAnimator::get_instance();
+        if (context && animator) {
+            context->set_highlight_ui_animation_enabled(enabled);
+
+            if (!enabled) {
+                sclint id = animator->find_animator_by_type(ANIMATION_TYPE_HIGHLIGHT_UI);
+                if (id != NOT_USED) {
+                    animator->destroy_animator(id);
+                }
+            }
         }
     }
 }
@@ -908,8 +1050,6 @@ CSCLUIImpl::enable_touch_offset(sclboolean enabled)
 void
 CSCLUIImpl::disable_input_events(sclboolean disabled)
 {
-    sclboolean ret = FALSE;
-
     if (m_initialized) {
         CSCLController *controller = CSCLController::get_instance();
         if (controller) {
@@ -992,4 +1132,14 @@ CSCLUIImpl::set_autocapital_shift_state(sclboolean flag) {
 sclboolean
 CSCLUIImpl::get_autocapital_shift_state() {
     return m_autocapital_shift_state;
+}
+
+sclboolean
+CSCLUIImpl::process_key_event(const char *key)
+{
+    if (m_initialized) {
+        CSCLEvents *events = CSCLEvents::get_instance();
+        return events->process_key_event(key);
+    }
+    return FALSE;
 }

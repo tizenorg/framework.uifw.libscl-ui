@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -17,7 +17,6 @@
 
 #include <limits.h>
 #include <unistd.h>
-#include "xml2dat.h"
 #include "string_encoder.h"
 #include "metadata_handler.h"
 #include "encode_layout.h"
@@ -172,8 +171,8 @@ int main(const int argc, char* argv[]) {
             rs.put<sint_t>(offset_table[i], OFFSET_WIDTH);
         }
 
-        int offset = 0;
-        int ret = rs.toFile(bin_file, offset);
+        int bin_offset = 0;
+        int ret = rs.toFile(bin_file, bin_offset);
         if (ret < 0) {
             printf("error\n");
             return -1;

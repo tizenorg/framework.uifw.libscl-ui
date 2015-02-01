@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -30,7 +30,7 @@ class String_Encoder:public IString_Encoder{
         }
 
         void set_path(const char* file) {
-            this->file = file;
+            this->m_file = file;
         }
 
         /* @ insert str to string vector */
@@ -55,15 +55,15 @@ class String_Encoder:public IString_Encoder{
         int encode() const{
             ResourceStorage storage;
             encode(storage);
-            storage.toFile(file);
-            return storage.size();
+            storage.toFile(m_file);
+            return storage.get_size();
         }
         int encode(int& offset) const{
             ResourceStorage storage;
             encode(storage);
-            storage.toFile(file, offset);
+            storage.toFile(m_file, offset);
 
-            return storage.size();
+            return storage.get_size();
         }
 
         int encode(ResourceStorage& storage) const{
@@ -76,11 +76,11 @@ class String_Encoder:public IString_Encoder{
                 storage.put(it->c_str());
             }
 
-            return storage.size();
+            return storage.get_size();
         }
 
     private:
         std::vector<std::string> m_vec_string;
-        const char* file;
+        const char* m_file;
 };
 #endif

@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -40,7 +40,6 @@ static tts_h tts = NULL;
 static Eina_Bool _get_default_zone_geometry_info (Ecore_X_Window root, scluint *x, scluint *y, scluint *w, scluint *h)
 {
     Ecore_X_Atom zone_geometry_atom;
-    Ecore_X_Window default_zone;
     Ecore_X_Window* zone_lists;
     sclint num_zone_lists;
     sclint num_ret;
@@ -92,7 +91,7 @@ void accessibility_changed_cb(keynode_t *key, void* data)
                 if (TTS_ERROR_NONE != r) {
                     LOGD("tts_create FAILED : result(%d)", r);
                 } else {
-                    tts_set_mode (tts, TTS_MODE_SCREEN_READER);
+                    r = tts_set_mode (tts, TTS_MODE_SCREEN_READER);
                 }
                 if (TTS_ERROR_NONE != r) {
                     LOGD("tts_set_mode FAILED : result(%d)", r);
@@ -160,6 +159,7 @@ CSCLUtilsImplLinux::get_screen_resolution(sclint *x, sclint *y) {
     static Evas_Coord scr_w = 0, scr_h = 0;
     if (scr_w == 0 || scr_h == 0) {
         scluint w, h;
+        w = h = 0;
         if (_get_default_zone_geometry_info(ecore_x_window_root_first_get(), NULL, NULL, &w, &h)) {
             scr_w = w;
             scr_h = h;
@@ -199,7 +199,7 @@ CSCLUtilsImplLinux::play_tts(const sclchar* str) {
                 LOGD("Fail to stop TTS : ret(%d)\n", r);
             }
         }
-        r = tts_add_text(tts, str, "en_US", TTS_VOICE_TYPE_FEMALE, TTS_SPEED_NORMAL, &utt_id);
+        r = tts_add_text(tts, str, NULL, TTS_VOICE_TYPE_AUTO, TTS_SPEED_AUTO, &utt_id);
         if (TTS_ERROR_NONE == r) {
             r = tts_play(tts);
             if (TTS_ERROR_NONE != r) {

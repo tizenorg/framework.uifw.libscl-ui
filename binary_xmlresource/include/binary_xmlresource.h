@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -30,7 +30,7 @@
 #include "magnifier_configure_bin_parser.h"
 #include "nine_patch_file_list_bin_parser.h"
 #include "sclres.h"
-struct info_t{
+struct resource_info_t{
     int offset;
     int size;
 };
@@ -82,12 +82,12 @@ class BinResource: public sclres::SclRes{
     int get_modifier_decoration_id(const char *name);
     bool get_nine_patch_info(const char *filename, SclNinePatchInfo *info);
 
-    const char* name() {
+    const char* get_name() {
         return "binary_xmlparser";
     }
 
     void destroy();
-    struct info_t info[MAX_DATATYPE];
+    struct resource_info_t m_info[MAX_DATATYPE];
     private:
     BinResource();
 

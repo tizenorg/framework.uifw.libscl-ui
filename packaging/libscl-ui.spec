@@ -3,10 +3,10 @@
 
 Name:       libscl-ui
 Summary:    A library for developing XML-based software keyboards
-Version:    0.4.4
+Version:    0.4.7
 Release:    1
-Group:      TO BE / FILLED IN
-License:    TO BE / FILLED IN
+Group:      System Environment/Libraries
+License:    Apache License, Version 2.0
 Source0:    libscl-ui-%{version}.tar.gz
 BuildRequires:  gettext-tools
 BuildRequires:  cmake
@@ -37,13 +37,19 @@ A devel pacakge of libscl-ui library that helps developing S/W Keyboard
 
 
 %build
+export CFLAGS+=" -DTIZEN_DEBUG_ENABLE"
+export CXXFLAGS+=" -DTIZEN_DEBUG_ENABLE"
+export FFLAGS+=" -DTIZEN_DEBUG_ENABLE"
+
+rm -rf CMakeFiles
+rm -rf CMakeCache.txt
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
-cp LICENSE.Flora %{buildroot}/usr/share/license/%{name}
+cp LICENSE %{buildroot}/usr/share/license/%{name}
 
 %make_install
 

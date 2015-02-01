@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -28,7 +28,16 @@
 namespace scl
 {
 
-typedef struct {
+struct SclUIEventDesc {
+    SclUIEventDesc() {
+        key_value = NULL;
+        key_event = 0;
+        key_type = KEY_TYPE_NONE;
+        key_modifier = KEY_MODIFIER_NONE;
+        touch_id = 0;
+        touch_event_order = 0;
+        event_type = EVENT_TYPE_NONE;
+    }
     const sclchar *key_value;
     sclulong key_event;
     SCLKeyType key_type;
@@ -43,7 +52,52 @@ typedef struct {
     SclPoint mouse_farthest_point;
 
     SCLEventType event_type;
-} SclUIEventDesc;
+};
+
+struct SclNotiDesc {
+    SclUIEventDesc *ui_event_desc;
+};
+
+struct SclNotiPopupOpeningDesc : SclNotiDesc {
+    const char *input_mode;
+}; // SCL_UINOTITYPE_POPUP_OPENING
+
+struct SclNotiPopupOpenedDesc : SclNotiDesc {
+    sclwindow window;
+    const char *input_mode;
+}; // SCL_UINOTITYPE_POPUP_OPENED
+
+struct SclNotiPopupClosingDesc : SclNotiDesc {
+    sclwindow window;
+    const char *input_mode;
+    sclboolean timed_out;
+}; // SCL_UINOTITYPE_POPUP_CLOSING
+
+struct SclNotiPopupClosedDesc : SclNotiDesc {
+    sclwindow window;
+    const char *input_mode;
+    sclboolean timed_out;
+}; // SCL_UINOTITYPE_POPUP_CLOSED
+
+struct SclNotiGestureFlickDesc : SclNotiDesc {
+    SCLDragType drag_type;
+}; // SCL_UINOTITYPE_GESTURE_FLICK
+
+struct SclNotiShiftStateChangeDesc : SclNotiDesc {
+    SCLShiftState shift_state;
+}; // SCL_UINOTITYPE_SHIFT_STATE_CHANGE
+
+struct SclNotiInputModeChangeDesc : SclNotiDesc {
+    const char *input_mode;
+}; // SCL_UINOTITYPE_INPUT_MODE_CHANGE
+
+struct SclNotiHighlighNavigateDesc : SclNotiDesc {
+    SCLHighlightNavigationDirection direction;
+    sclwindow window_from;
+    scl8 key_from;
+    sclwindow window_to;
+    scl8 key_to;
+}; // SCL_UINOTITYPE_HIGHLIGHT_NAVIGATE
 
 /**
 * @brief The callback interface to handle SCL events
@@ -54,7 +108,7 @@ typedef struct {
 struct ISCLUIEventCallback {
     virtual SCLEventReturnType on_event_key_clicked(SclUIEventDesc ui_event_desc) { return SCL_EVENT_PASS_ON; }
     virtual SCLEventReturnType on_event_drag_state_changed(SclUIEventDesc ui_event_desc) { return SCL_EVENT_PASS_ON; }
-    virtual SCLEventReturnType on_event_notification(SCLUINotiType noti_type, sclint etc_info) { return SCL_EVENT_PASS_ON; }
+    virtual SCLEventReturnType on_event_notification(SCLUINotiType noti_type, SclNotiDesc *etc_info) { return SCL_EVENT_PASS_ON; }
 };
 
 }

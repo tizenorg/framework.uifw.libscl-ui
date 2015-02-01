@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -59,7 +59,6 @@ static void handle_shift_button_click_event(SclUIEventDesc ui_event_desc)
                     /* The default next state should be LOCK state */
                     SCLShiftState next_state = SCL_SHIFT_STATE_LOCK;
                     if (context->get_shift_multi_touch_enabled()) {
-                        CSCLContext *context = CSCLContext::get_instance();
                         if (context) {
                             if (context->get_shift_multi_touch_state() == SCL_SHIFT_MULTITOUCH_ON_PRESSED) {
                                 /* If the shift multi touch state is ON_PRESSED, don't leave ON state now */
@@ -77,6 +76,9 @@ static void handle_shift_button_click_event(SclUIEventDesc ui_event_desc)
                     uiimpl->set_shift_state(SCL_SHIFT_STATE_OFF);
                 }
                 break;
+                case SCL_SHIFT_STATE_MAX:
+                default:
+                    break;
             }
         }
     }
@@ -101,9 +103,8 @@ static void handle_shift_state_on_button_click_event(SclUIEventDesc ui_event_des
         turn_shift_off = FALSE;
     }
     /* If we are in ON_PRESSED or ON_KEY_ENTERED mode of shift multi touch state, do not turn it off now */
-    if (context->get_shift_multi_touch_enabled() && turn_shift_off) {
-        CSCLContext *context = CSCLContext::get_instance();
-        if (context) {
+    if (context) {
+        if (context->get_shift_multi_touch_enabled() && turn_shift_off) {
             if (context->get_shift_multi_touch_state() == SCL_SHIFT_MULTITOUCH_ON_PRESSED) {
                 context->set_shift_multi_touch_state(SCL_SHIFT_MULTITOUCH_ON_KEY_ENTERED);
                 turn_shift_off = FALSE;
@@ -209,7 +210,7 @@ CSCLEventHandler::on_event_drag_state_changed(SclUIEventDesc ui_event_desc)
 }
 
 SCLEventReturnType
-CSCLEventHandler::on_event_notification(SCLUINotiType noti_type, sclint etc_info)
+CSCLEventHandler::on_event_notification(SCLUINotiType noti_type, SclNotiDesc *etc_info)
 {
     SCLEventReturnType ret = SCL_EVENT_PASS_ON;
 
@@ -235,18 +236,22 @@ CSCLEventHandler::set_input_mode(const sclchar *input_mode)
     SCL_DEBUG();
 
     sclboolean ret = FALSE;
-    m_cur_input_mode_event_callback = NULL;
+    SclNotiInputModeChangeDesc desc;
+    desc.input_mode = input_mode;
+    if (SCL_EVENT_PASS_ON == on_event_notification(SCL_UINOTITYPE_INPUT_MODE_CHANGE, &desc)) {
+        m_cur_input_mode_event_callback = NULL;
 
-    if (input_mode) {
-        std::string id = input_mode;
-        std::map<std::string, ISCLUIEventCallback*>::iterator iter = m_input_mode_event_callbacks.find(input_mode);
-        if (iter != m_input_mode_event_callbacks.end()) {
-            m_cur_input_mode_event_callback = (iter->second);
+        if (input_mode) {
+            std::string id = input_mode;
+            std::map<std::string, ISCLUIEventCallback*>::iterator iter = m_input_mode_event_callbacks.find(input_mode);
+            if (iter != m_input_mode_event_callbacks.end()) {
+                m_cur_input_mode_event_callback = (iter->second);
+            }
         }
-    }
 
-    if (m_cur_input_mode_event_callback) {
-        ret = TRUE;
+        if (m_cur_input_mode_event_callback) {
+            ret = TRUE;
+        }
     }
 
     return ret;
@@ -287,6 +292,7 @@ CSCLEventHandler::pre_process_ui_event(SclUIEventDesc &ui_event_desc)
         {"Right",       MVK_Right       },
         {"Up",          MVK_Up          },
         {"Down",        MVK_Down        },
+        {"Escape",      MVK_Escape      },
     };
 
     /* Translate key_values only when key_event is 0 and key_value is not NULL */

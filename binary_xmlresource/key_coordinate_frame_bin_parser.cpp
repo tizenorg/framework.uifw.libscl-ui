@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -54,7 +54,6 @@ BinKeyCoordFrameParser::
 load(int layout_id)
 {
     BinResource *bin_xmlres = BinResource::get_instance();
-    int layout_data_offset = bin_xmlres->info[LAYOUT].offset;
 
     char path[_POSIX_PATH_MAX] = {0};
 
@@ -64,18 +63,18 @@ load(int layout_id)
     FileStorage alldata;
     alldata.loadFile(path);
 
-    String_Bin_Parser stringBinParser(alldata, bin_xmlres->info[STRING].offset, bin_xmlres->info[STRING].size);
-    Metadata_Bin_Parser metadataBinParser(alldata, bin_xmlres->info[METADATA].offset, bin_xmlres->info[METADATA].size);
+    String_Bin_Parser stringBinParser(alldata, bin_xmlres->m_info[STRING].offset, bin_xmlres->m_info[STRING].size);
+    Metadata_Bin_Parser metadataBinParser(alldata, bin_xmlres->m_info[METADATA].offset, bin_xmlres->m_info[METADATA].size);
 
     String_Provider stringProvider(&stringBinParser);
     Metadata_Provider metadataProvider(&metadataBinParser);
-    ParserInfo_Provider parser_info_provider(&metadataProvider, &stringProvider);
-    storage.set_str_provider(&parser_info_provider);
-    this->parser_info_provider = &parser_info_provider;
+    ParserInfo_Provider provider(&metadataProvider, &stringProvider);
+    storage.set_str_provider(&provider);
+    this->parser_info_provider = &provider;
     storage.get_storage(
         alldata,
-        bin_xmlres->info[KEY_COORDINATE_FRAME].offset,
-        bin_xmlres->info[KEY_COORDINATE_FRAME].size);
+        bin_xmlres->m_info[KEY_COORDINATE_FRAME].offset,
+        bin_xmlres->m_info[KEY_COORDINATE_FRAME].size);
 
     // 4 byte (range[0-4,294,967,295))
     const int DATA_SIZE_BYTES = 4;
@@ -147,10 +146,10 @@ unload()
     }
 }
 void
-BinKeyCoordFrameParser::init(const FileStorage& storage, int offset, int size, IParserInfo_Provider* parser_info_provider) {
+BinKeyCoordFrameParser::init(const FileStorage& storage, int offset, int size, IParserInfo_Provider* provider) {
     m_storage.set_str_provider(parser_info_provider);
     m_storage.get_storage(storage, offset, size);
-    this->parser_info_provider = parser_info_provider;
+    this->parser_info_provider = provider;
 }
 
 PSclLayoutKeyCoordinatePointerTable
@@ -160,8 +159,6 @@ BinKeyCoordFrameParser::get_key_coordinate_pointer_frame() {
 
 void
 BinKeyCoordFrameParser::decode_key_coordinate_record(FileStorage& storage, const PSclLayoutKeyCoordinate cur, const Key_coordinate_record_width& record_width) {
-    int width = 0;
-
     cur->valid = (sclboolean)true;
     //x
     cur->x = storage.get<sint_t>(record_width.x);

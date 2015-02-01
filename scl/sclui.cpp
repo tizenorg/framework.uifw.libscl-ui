@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -103,6 +103,54 @@ CSCLUI::set_input_mode(const sclchar *input_mode)
 }
 
 /**
+ * Returns the current input mode
+ */
+const sclchar*
+CSCLUI::get_input_mode()
+{
+    const sclchar *ret = NULL;
+
+    if (m_impl) {
+        ret = m_impl->get_input_mode();
+    }
+
+    return ret;
+}
+
+/**
+ * Sets the given popup window's input mode to the given mode
+ * @Usage
+ * gCore->set_input_mode("INPUT_MODE_SYMBOL");
+ */
+sclboolean
+CSCLUI::set_popup_input_mode(sclwindow window, const sclchar *input_mode)
+{
+    sclboolean ret = FALSE;
+
+    if (m_impl) {
+        ret = m_impl->set_popup_input_mode(window, input_mode);
+    }
+
+    return ret;
+}
+
+/**
+ * Returns the given popup window's input mode
+ */
+const sclchar*
+CSCLUI::get_popup_input_mode(sclwindow window)
+{
+    const sclchar *ret = NULL;
+
+    if (m_impl) {
+        ret = m_impl->get_popup_input_mode(window);
+    }
+
+    return ret;
+}
+
+
+/**
  * Sets the current rotation
  */
 sclboolean
@@ -146,23 +194,6 @@ CSCLUI::get_display_mode()
 
     return ret;
 }
-
-/**
- * Returns the current input mode
- */
-const sclchar*
-CSCLUI::get_input_mode()
-{
-    const sclchar *ret = NULL;
-
-    if (m_impl) {
-        ret = m_impl->get_input_mode();
-    }
-
-    return ret;
-}
-
-
 
 /**
  * Sets a private key to the current context
@@ -231,6 +262,25 @@ CSCLUI::set_shift_state(SCLShiftState state)
         m_impl->set_shift_state(state);
     }
 }
+
+sclboolean
+CSCLUI::get_caps_lock_mode()
+{
+    sclboolean ret = FALSE;
+    if (m_impl) {
+        ret = m_impl->get_caps_lock_mode();
+    }
+    return ret;
+}
+
+void
+CSCLUI::set_caps_lock_mode(sclboolean state)
+{
+    if (m_impl) {
+        m_impl->set_caps_lock_mode(state);
+    }
+}
+
 
 /**
  * This function will be called by the user which uses SCL when the context of the focus application is changed
@@ -339,12 +389,34 @@ CSCLUI::set_custom_scale_rate(sclfloat x, sclfloat y)
 }
 
 /**
+ * Sets the custom starting coordinates for drawing the keyboard's content
+ */
+void
+CSCLUI::set_custom_starting_coordinates(sclint x, sclint y)
+{
+    if (m_impl) {
+        m_impl->set_custom_starting_coordinates(x, y);
+    }
+}
+
+/**
+ * Sets the custom starting coordinates option for drawing the keyboard's content
+ */
+void
+CSCLUI::set_custom_starting_coordinates_option(SCLStartingCoordinatesOption option)
+{
+    if (m_impl) {
+        m_impl->set_custom_starting_coordinates_option(option);
+    }
+}
+
+/**
  * Returns the scl main window size
  */
 SclRectangle
 CSCLUI::get_main_window_rect()
 {
-    SclRectangle ret = {0};
+    SclRectangle ret = {0,0,0,0};
 
     if (m_impl) {
         ret = m_impl->get_main_window_rect();
@@ -359,7 +431,7 @@ CSCLUI::get_main_window_rect()
 SclSize
 CSCLUI::get_input_mode_size(const sclchar *input_mode, SCLDisplayMode display_mode)
 {
-    SclSize ret = {0};
+    SclSize ret = {0,0};
 
     if (m_impl) {
         ret = m_impl->get_input_mode_size(input_mode, display_mode);
@@ -526,6 +598,22 @@ CSCLUI::enable_shift_multi_touch(sclboolean enabled)
 }
 
 void
+CSCLUI::enable_highlight_ui(sclboolean enabled)
+{
+    if (m_impl) {
+        m_impl->enable_highlight_ui(enabled);
+    }
+}
+
+void
+CSCLUI::enable_highlight_ui_animation(sclboolean enabled)
+{
+    if (m_impl) {
+        m_impl->enable_highlight_ui_animation(enabled);
+    }
+}
+
+void
 CSCLUI::enable_touch_offset(sclboolean enabled)
 {
     if (m_impl) {
@@ -601,4 +689,13 @@ CSCLUI::get_autocapital_shift_state() {
     }
 
     return flag;
+}
+
+sclboolean
+CSCLUI::process_key_event(const char *key)
+{
+    if (m_impl) {
+        return m_impl->process_key_event(key);
+    }
+    return FALSE;
 }

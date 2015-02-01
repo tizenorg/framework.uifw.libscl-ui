@@ -40,6 +40,7 @@ SET(SRCS
     scl/gwes/win32/sclgraphics-win32.cpp
     scl/gwes/efl/sclwindows-efl.cpp
     scl/gwes/efl/sclgraphics-efl.cpp
+    scl/gwes/efl/sclanimator-efl.cpp
     scl/gwes/efl/sclevents-efl.cpp
     scl/gwes/win32/sclevents-win32.cpp
     scl/sclfeedback.cpp
@@ -55,6 +56,8 @@ SET(SRCS
     scl/sclcontext.cpp
     scl/sclactionstate.cpp
     scl/sclresourcecache.cpp
+    scl/sclkeyfocushandler.cpp
+    scl/sclanimator.cpp
     res/sclresource.cpp
     res/simple_debug.cpp
 )

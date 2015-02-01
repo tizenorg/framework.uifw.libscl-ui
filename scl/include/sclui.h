@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -66,7 +66,6 @@ public:
 
     /**
      * @brief This API requests SCL library to hide the S/W keyboard from the screen
-     * @param[in] ctx target SCL context
      */
     void hide();
 
@@ -109,6 +108,21 @@ public:
      * @return a string pointer that indicates the name of current input mode
      */
     const sclchar* get_input_mode();
+
+    /**
+     * @brief This API request SCL library to change the given popup window's input mode
+     * @param[in] window the handle for the popup window that we want to change the input mode
+     * @param[in] input_mode the name of the desired input mode
+     * @return non-zero value is returned when successful
+     */
+    sclboolean set_popup_input_mode(sclwindow window, const sclchar *input_mode);
+
+    /**
+     * @brief This API retrieves the current input mode
+     * @param[in] window the handle for the popup window that we want to retrieve the input mode
+     * @return a string pointer that indicates the name of current input mode
+     */
+    const sclchar* get_popup_input_mode(sclwindow window);
 
     /**
      * @brief This API request SCL library to suspend screen updates
@@ -173,6 +187,18 @@ public:
      * @return current shift state
      */
     SCLShiftState get_shift_state();
+
+    /**
+     * @brief This API sets the current caps lock mode, which reverses the effect of shift mode
+     * @param[in] mode whether the cap lock mode is enabled or not
+     */
+    void set_caps_lock_mode(sclboolean mode);
+
+    /**
+     * @brief This API retrieves the current caps lock mode
+     * @return current caps lock mode
+     */
+    sclboolean get_caps_lock_mode();
 
     /**
      * @brief This API notifies the SCL library that the application's focus was moved to another input context
@@ -249,6 +275,19 @@ public:
      * @param[in] x the scale rate value
      */
     void set_custom_scale_rate(sclfloat x, sclfloat y);
+
+    /**
+     * @brief This API sets the starting coordinates for drawing keyboard's contents
+     * @param[in] x the starting coordinate x
+     * @param[in] y the starting coordinate y
+     */
+    void set_custom_starting_coordinates(sclint x, sclint y);
+
+    /**
+     * @brief This API sets the option for the starting coordinates feature
+     * @param[in] option the starting coordinate option
+     */
+    void set_custom_starting_coordinates_option(SCLStartingCoordinatesOption option);
 
     /**
      * @brief This API returns the number of current multi touch contexts,
@@ -342,6 +381,18 @@ public:
     void enable_shift_multi_touch(sclboolean enabled);
 
     /**
+     * @brief This API requests SCL library to enable/disable highlight ui
+     * @param[in] enabled indicates whether to show highlight ui
+     */
+    void enable_highlight_ui(sclboolean enabled);
+
+    /**
+     * @brief This API requests SCL library to enable/disable animation effect for highlight ui
+     * @param[in] enabled indicates whether to display animation effect when moving highlight ui
+     */
+    void enable_highlight_ui_animation(sclboolean enabled);
+
+    /**
      * @brief This API requests SCL library to apply the touch offset adjustment
      * @param[in] enabled indicates whether the touch offset adjustment should applied or not
      */
@@ -386,6 +437,11 @@ public:
      * @brief This API gets the autocapital shift state flag
      */
     sclint get_autocapital_shift_state();
+
+    /**
+     * @brief This API process the key event received from ISF
+     */
+    sclboolean process_key_event(const char *key);
 
 private:
     CSCLUIImpl *m_impl;

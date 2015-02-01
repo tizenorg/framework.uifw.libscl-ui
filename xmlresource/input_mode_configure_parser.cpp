@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -76,7 +76,6 @@ class InputModeConfigureParserImpl {
             xmlDocPtr doc;
             xmlNodePtr cur_node;
 
-            xmlChar* key;
 
             doc = xmlReadFile(input_file, NULL, 0);
             if (doc == NULL) {
@@ -103,16 +102,6 @@ class InputModeConfigureParserImpl {
             SclInputModeConfigure* cur_rec = m_input_mode_configure_table;
             while (cur_node != NULL) {
                 if (0 == xmlStrcmp(cur_node->name, (const xmlChar *)INPUT_MODE_CONFIGURE_MODE_TAG)) {
-                    set_input_mode_configure_default_record(cur_rec);
-
-                    key = xmlGetProp(cur_node, (const xmlChar*)INPUT_MODE_CONFIGURE_MODE_NAME_ATTRIBUTE);
-                    if (key) {
-                        cur_rec->name = (sclchar*)key;
-                    }
-
-                    get_prop_bool(cur_node, INPUT_MODE_CONFIGURE_MODE_DIM_WINDOW_ATTRIBUTE, &(cur_rec->use_dim_window));
-                    get_prop_bool(cur_node, INPUT_MODE_CONFIGURE_MODE_VIRTUAL_WINDOW_ATTRIBUTE, &(cur_rec->use_virtual_window));
-
                     parsing_mode_node(cur_node, cur_rec);
                     m_inputmode_size++;
                     cur_rec++;
@@ -140,9 +129,9 @@ class InputModeConfigureParserImpl {
         void parsing_mode_node(const xmlNodePtr cur_node, const PSclInputModeConfigure cur_rec) {
             assert(cur_node != NULL);
             assert(cur_rec != NULL);
+            set_input_mode_configure_default_record(cur_rec);
 
-            sclboolean val;
-            get_prop_bool(cur_node, INPUT_MODE_CONFIGURE_MODE_VIRTUAL_WINDOW_ATTRIBUTE, &val);
+            get_prop_bool(cur_node, INPUT_MODE_CONFIGURE_MODE_VIRTUAL_WINDOW_ATTRIBUTE, &(cur_rec->use_virtual_window));
             get_prop_bool(cur_node, INPUT_MODE_CONFIGURE_MODE_DIM_WINDOW_ATTRIBUTE, &(cur_rec->use_dim_window));
 
             xmlChar* temp = xmlGetProp(cur_node, (const xmlChar*)INPUT_MODE_CONFIGURE_MODE_NAME_ATTRIBUTE);

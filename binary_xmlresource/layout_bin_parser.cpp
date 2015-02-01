@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -39,10 +39,10 @@ get_instance() {
     return &instance;
 }
 void BinLayoutParser::
-init(const FileStorage& storage, int offset, int size, IParserInfo_Provider* parser_info_provider) {
-    m_storage.set_str_provider(parser_info_provider);
+init(const FileStorage& storage, int offset, int size, IParserInfo_Provider* provider) {
+    m_storage.set_str_provider(provider);
     m_storage.get_storage(storage, offset, size);
-    this->parser_info_provider = parser_info_provider;
+    this->parser_info_provider = provider;
     parsing_layout_table();
 
 }
@@ -99,7 +99,7 @@ parsing_layout_table() {
     m_layout_size = m_storage.get<sint_t>(REC_NUM_BYTES);
 
     // layout_rec_data_size
-    int layout_rec_data_size = m_storage.get<sint_t>(LAYOUT_REC_DATA_SIZE_BYTES);
+    m_storage.advance(LAYOUT_REC_DATA_SIZE_BYTES);
 
     for (int i = 0; i < m_layout_size; ++i) {
         SclLayout& cur = m_layout_table[i];

@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -39,8 +39,8 @@ typedef struct { // A context information dependant on each multitouch events
     SclPoint cur_pressed_point;
     struct timeval cur_pressed_time;
 
-    sclwindow cur_move_window;
-    SclPoint cur_move_point;
+    sclwindow cur_moving_window;
+    SclPoint cur_moving_point;
 
     SCLDragState cur_drag_state;
     SCLKeyModifier cur_key_modifier;
@@ -51,7 +51,7 @@ typedef struct { // A context information dependant on each multitouch events
     scl8 prev_pressed_key;
     sclwindow prev_pressed_window;
 
-    SclPoint prev_move_point;
+    SclPoint prev_moving_point;
     SCLDragState prev_drag_state;
 
     scl16 event_id;
@@ -120,6 +120,9 @@ public:
     SCLShiftState get_shift_state() const;
     void set_shift_state(SCLShiftState val);
 
+    sclboolean get_caps_lock_mode() const;
+    void set_caps_lock_mode(sclboolean val);
+
     SCLShiftMultitouchState get_shift_multi_touch_state() const;
     void set_shift_multi_touch_state(SCLShiftMultitouchState val);
 
@@ -168,6 +171,18 @@ public:
     sclboolean get_shift_multi_touch_enabled() {
         return m_shift_multi_touch_enabled;
     }
+    void set_highlight_ui_enabled(sclboolean enabled) {
+        m_highlight_ui_enabled = enabled;
+    }
+    sclboolean get_highlight_ui_enabled() {
+        return m_highlight_ui_enabled;
+    }
+    void set_highlight_ui_animation_enabled(sclboolean enabled) {
+        m_highlight_ui_animation_enabled = enabled;
+    }
+    sclboolean get_highlight_ui_animation_enabled() {
+        return m_highlight_ui_animation_enabled;
+    }
 
     scl8 get_last_pressed_key() {
         return m_last_pressed_key;
@@ -213,7 +228,7 @@ public:
         return m_cur_highlighted_window;
     }
 
-    void create_multi_touch_context(scltouchdevice touch_id, sclboolean isSubEvent = FALSE);
+    void create_multi_touch_context(scltouchdevice touch_id, sclboolean is_sub_event = FALSE);
     void destroy_multi_touch_context(scltouchdevice touch_id);
     MultiTouchContext* find_multi_touch_context(scltouchdevice touch_id);
 
@@ -231,10 +246,10 @@ public:
     void set_custom_magnifier_label(scltouchdevice touch_id, sclint index, const sclchar* label);
     const sclchar* get_custom_magnifier_label(scltouchdevice touch_id, sclint index);
 
-    SclPoint get_cur_move_point(scltouchdevice touch_id);
-    void set_cur_move_point(scltouchdevice touch_id, sclint x, sclint y);
-    sclwindow get_cur_move_window(scltouchdevice touch_id);
-    void set_cur_move_window(scltouchdevice touch_id, sclwindow window);
+    SclPoint get_cur_moving_point(scltouchdevice touch_id);
+    void set_cur_moving_point(scltouchdevice touch_id, sclint x, sclint y);
+    sclwindow get_cur_moving_window(scltouchdevice touch_id);
+    void set_cur_moving_window(scltouchdevice touch_id, sclwindow window);
     SclPoint get_farthest_move_point(scltouchdevice touch_id);
     void set_farthest_move_point(scltouchdevice touch_id, sclint x, sclint y);
     sclint get_farthest_move_dist(scltouchdevice touch_id);
@@ -249,13 +264,13 @@ public:
     sclwindow get_prev_pressed_window(scltouchdevice touch_id);
     void set_prev_pressed_window(scltouchdevice touch_id, sclwindow window);
 
-    SclPoint get_prev_move_point(scltouchdevice touch_id);
-    void set_prev_move_point(scltouchdevice touch_id, sclint x, sclint y);
+    SclPoint get_prev_moving_point(scltouchdevice touch_id);
+    void set_prev_moving_point(scltouchdevice touch_id, sclint x, sclint y);
     SCLDragState get_prev_drag_state(scltouchdevice touch_id);
     void set_prev_drag_state(scltouchdevice touch_id, SCLDragState state);
 
     sclint get_multi_touch_context_num();
-    sclboolean get_multi_touch_event(sclint seqorder, SclUIEventDesc *desc);
+    sclboolean get_multi_touch_event(sclint order, SclUIEventDesc *desc);
     sclint get_multi_touch_event_order(scltouchdevice touch_id);
 
     sclchar* get_cur_sublayout();
@@ -272,6 +287,7 @@ protected:
 
     sclboolean m_hidden;
     SCLShiftState m_shift_state;
+    sclboolean m_caps_lock_mode;
     SCLShiftMultitouchState m_shift_multi_touch_state;
 
     sclchar m_cur_sub_layout[MAX_SIZE_OF_SUBLAYOUT_STRING];
@@ -282,6 +298,8 @@ protected:
     sclboolean m_sounce_enabled;
     sclboolean m_vibration_enabled;
     sclboolean m_shift_multi_touch_enabled;
+    sclboolean m_highlight_ui_enabled;
+    sclboolean m_highlight_ui_animation_enabled;
 
     sclwindow m_last_pressed_window;
     scl8 m_last_pressed_key;

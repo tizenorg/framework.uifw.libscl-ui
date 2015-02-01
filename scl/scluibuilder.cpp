@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -25,6 +25,8 @@
 #include "sclcontext.h"
 #include "sclimageproxy.h"
 #include "sclactionstate.h"
+#include "sclkeyfocushandler.h"
+#include "sclanimator.h"
 
 //#include "sclresource.h"
 #include <assert.h>
@@ -87,7 +89,8 @@ CSCLUIBuilder::init(sclwindow parent)
             mode = sclres_manager->get_inputmode_id(default_configure->input_mode);
         }
         /* Make sure these variables does not exceed the size of our array */
-        if (!scl_check_arrindex(mode, MAX_SCL_INPUT_MODE) || !scl_check_arrindex(mode, sclres_manager->get_inputmode_size())) {
+        if (!scl_check_arrindex(mode, MAX_SCL_INPUT_MODE) ||
+            !scl_check_arrindex(mode, sclres_manager->get_inputmode_size())) {
             mode = 0;
         }
         if (!scl_check_arrindex(display_mode, DISPLAYMODE_MAX)) {
@@ -157,13 +160,14 @@ CSCLUIBuilder::show_layout(const sclwindow window, const scl16 x, const scl16 y,
     CSCLGraphics *graphics = CSCLGraphics::get_instance();
     CSCLResourceCache *cache = CSCLResourceCache::get_instance();
     CSCLContext *context = CSCLContext::get_instance();
+    CSCLKeyFocusHandler* focus_handler = CSCLKeyFocusHandler::get_instance();
 
     SclResParserManager *sclres_manager = SclResParserManager::get_instance();
     PSclDefaultConfigure default_configure = NULL;
     if (sclres_manager) {
         default_configure = sclres_manager->get_default_configure();
     }
-    if (events && windows && graphics && cache && context && default_configure) {
+    if (events && windows && graphics && cache && context && focus_handler && default_configure) {
     /* FIXME : The draw_ctx should be acquired from the base window also, if the target window is virtual
        However, for ease of developement, leave the drawctx to be acquired from the target window for now
        Should modify the EFLObject list management routine after fixing the issue described above
@@ -176,12 +180,12 @@ CSCLUIBuilder::show_layout(const sclwindow window, const scl16 x, const scl16 y,
             /* For the magnifier window */
             ret = show_magnifier(window, draw_ctx);
         } else if (window == windows->get_dim_window()) {
-            SclWindowContext *dimctx = windows->get_window_context(window);
-            if (dimctx) {
+            SclWindowContext *dim_window_context = windows->get_window_context(window);
+            if (dim_window_context) {
                 SclSize size;
                 SclColor color;
-                size.width = dimctx->geometry.width;
-                size.height = dimctx->geometry.height;
+                size.width = dim_window_context->geometry.width;
+                size.height = dim_window_context->geometry.height;
                 color = default_configure->dim_color;
                 draw_window_bg_by_sw(window, draw_ctx, size, 0.0, color, color);
                 /*sclchar composed_path[_POSIX_PATH_MAX] = {0,};
@@ -195,32 +199,38 @@ CSCLUIBuilder::show_layout(const sclwindow window, const scl16 x, const scl16 y,
             // FIXME implement later
             // SclLayoutInfoCache *info_cache = cache->get_cur_layout_info_cache(window);
             if (layout) {
-                CSCLWindows *windows = CSCLWindows::get_instance();
-                //SclWindowContext *winctx = windows->get_window_context(window, FALSE);
-                SclWindowContext *winctx = windows->get_window_context(window);
+                //SclWindowContext *window_context = windows->get_window_context(window, FALSE);
+                SclWindowContext *window_context = windows->get_window_context(window);
                 scl_assert_return_false(layout);
 
                 if (layout->use_sw_background) {
-                    if (winctx) {
+                    if (window_context) {
                         SclSize size;
-                        size.width = winctx->geometry.width;
-                        size.height = winctx->geometry.height;
+                        size.width = window_context->geometry.width;
+                        size.height = window_context->geometry.height;
                         draw_window_bg_by_sw(window, draw_ctx, size, layout->bg_line_width, layout->bg_line_color, layout->bg_color);
                     }
                 } else if (layout->image_path[BUTTON_STATE_NORMAL]) {
-                    /* If the target window is virtual window, let's draw it on the base window */
                     sclint targetx = 0;
                     sclint targety = 0;
+                    /* If the target window is virtual window, let's draw it on the base window */
                     sclwindow targetwin = window;
-                    if (winctx) {
-                        if (winctx->is_virtual) {
-                            //SclWindowContext *basectx = windows->get_window_context(windows->get_base_window(), FALSE);
-                            SclWindowContext *basectx = windows->get_window_context(windows->get_base_window());
-                            if (basectx) {
+                    if (window_context) {
+                        if (window_context->is_virtual) {
+                            /*SclWindowContext *base_window_context =
+                                windows->get_window_context(windows->get_base_window(), FALSE);*/
+                            SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
+                            if (base_window_context) {
                                 targetwin = windows->get_base_window();
-                                targetx = winctx->geometry.x - basectx->geometry.x;
-                                targety = winctx->geometry.y - basectx->geometry.y;
+                                targetx = window_context->geometry.x - base_window_context->geometry.x;
+                                targety = window_context->geometry.y - base_window_context->geometry.y;
                             }
+                        }
+                        /* Apply custom starting coordinates only to the base window, and if the option is ALL */
+                        if (windows->is_base_window(window) &&
+                            cache->get_custom_starting_coordinates_option() == SCL_STARTING_COORDINATES_OPTION_ALL) {
+                            targetx += cache->get_custom_starting_coordinates().x;
+                            targety += cache->get_custom_starting_coordinates().y;
                         }
                         if (strlen(layout->image_path[BUTTON_STATE_NORMAL]) > 0) {
                             /*SclImageCachedInfo cached_info = {0, };
@@ -232,15 +242,59 @@ CSCLUIBuilder::show_layout(const sclwindow window, const scl16 x, const scl16 y,
                             sclchar composed_path[_POSIX_PATH_MAX] = {0,};
                             m_utils->get_composed_path(composed_path, IMG_PATH_PREFIX, layout->image_path[BUTTON_STATE_NORMAL]);
                             // Temporary testing for EFL backend.. Otherwise the background image covers other buttons
-                            if (winctx && (x + y + width + height == 0)) {
-                                //graphics->draw_image(targetwin, draw_ctx, composed_path, &cached_info, targetx, targety, layout->width, layout->height, winctx->layout_image_offset.x, winctx->layout_image_offset.y, -1, -1, layout->extract_background);
-                                graphics->draw_image(targetwin, draw_ctx, composed_path, NULL, targetx, targety, layout->width, layout->height,
-                                                        winctx->layout_image_offset.x, winctx->layout_image_offset.y, -1, -1, layout->extract_background);
+                            if (window_context && (x + y + width + height == 0)) {
+                                //graphics->draw_image(targetwin, draw_ctx, composed_path, &cached_info, targetx, targety, layout->width, layout->height, window_context->layout_image_offset.x, winctx->layout_image_offset.y, -1, -1, layout->extract_background);
+                                graphics->draw_image(targetwin, draw_ctx, composed_path, NULL,
+                                    targetx, targety, layout->width, layout->height,
+                                    window_context->layout_image_offset.x, window_context->layout_image_offset.y,
+                                    -1, -1, layout->extract_background);
                             }
                         }
                     }
                 }
                 draw_button_all(window, draw_ctx, x, y, width, height);
+
+                //if (highlight_ui_enabled)
+                if (focus_handler->get_current_focus_window() == window) {
+                    sclint startx = 0;
+                    sclint starty = 0;
+
+                    SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
+                    if (window_context && base_window_context) {
+                        if (window_context->is_virtual) {
+                            startx += (window_context->geometry.x - base_window_context->geometry.x);
+                            starty += (window_context->geometry.y - base_window_context->geometry.y);
+                        }
+                    }
+
+                    sclboolean draw_highlight_ui = TRUE;
+                    SclAnimationState *state = NULL;
+                    CSCLAnimator *animator = CSCLAnimator::get_instance();
+                    if (animator) {
+                        sclint id = animator->find_animator_by_type(ANIMATION_TYPE_HIGHLIGHT_UI);
+                        state = animator->get_animation_state(id);
+                    }
+                    if (state) {
+                        // If currently the highlight UI is being animated, don't draw it here
+                        if (state->active) {
+                            draw_highlight_ui = FALSE;
+                        }
+                    }
+
+                    if (draw_highlight_ui && context->get_highlight_ui_enabled()) {
+                        sclchar composed_path[_POSIX_PATH_MAX] = {0,};
+                        const SclLayoutKeyCoordinate *coordinate = NULL;
+                        scl8 current_key_index = focus_handler->get_current_focus_key();
+                        coordinate = cache->get_cur_layout_key_coordinate(window, current_key_index);
+                        /* FIXME : Need to use highlight image */
+                        m_utils->get_composed_path(composed_path, IMG_PATH_PREFIX, SCL_HIGHLIGHT_UI_IMAGE);
+                        if (coordinate) {
+                            // Draw highlight
+                            graphics->draw_image(window, draw_ctx, composed_path, NULL,
+                                startx + coordinate->x, starty + coordinate->y, coordinate->width, coordinate->height);
+                        }
+                    }
+                }
             }
         }
         graphics->end_paint(window, draw_ctx);
@@ -267,13 +321,13 @@ CSCLUIBuilder::draw_button_all(const sclwindow window, const scldrawctx draw_ctx
     CSCLResourceCache *cache = CSCLResourceCache::get_instance();
     CSCLUtils *utils = CSCLUtils::get_instance();
     SclLayoutKeyCoordinate* coordinate = NULL;
-    SclButtonContext* btncontext = NULL;
+    SclButtonContext* button_context = NULL;
 
     if (context && cache && utils) {
         for (sclint idx = 0; idx < MAX_KEY; idx++) {
             coordinate = cache->get_cur_layout_key_coordinate(window, idx);
-            btncontext = cache->get_cur_button_context(window, idx);
-            if (coordinate && btncontext) {
+            button_context = cache->get_cur_button_context(window, idx);
+            if (coordinate && button_context) {
                 /* First check if this button is enabled in current active sublayout */
                 sclboolean subLayoutMatch = TRUE;
                 if (coordinate->sub_layout && context->get_cur_sublayout()) {
@@ -284,7 +338,11 @@ CSCLUIBuilder::draw_button_all(const sclwindow window, const scldrawctx draw_ctx
                 if (coordinate->valid && subLayoutMatch) {
                     SclRectangle itemrect = {coordinate->x, coordinate->y, coordinate->width, coordinate->height};
                     if (drawall || utils->is_rect_overlap(itemrect, updatearea)) {
-                        if (!draw_button(window, draw_ctx, idx, btncontext->state)) {
+                        SCLButtonState state = button_context->state;
+                        if (button_context->toggled) {
+                            state = BUTTON_STATE_TOGGLED;
+                        }
+                        if (!draw_button(window, draw_ctx, idx, state)) {
                             break;
                         }
                     }
@@ -312,10 +370,10 @@ CSCLUIBuilder::draw_button(const sclwindow window, scldrawctx draw_ctx, const sc
     CSCLGraphics *graphics = CSCLGraphics::get_instance();
 
     if (cache && context && graphics) {
-        SclButtonContext* btncontext = cache->get_cur_button_context(window, key_index);
+        SclButtonContext* button_context = cache->get_cur_button_context(window, key_index);
 
-        if (btncontext) {
-            if (!btncontext->used) {
+        if (button_context) {
+            if (!button_context->used) {
                 return FALSE;
             }
 
@@ -328,8 +386,8 @@ CSCLUIBuilder::draw_button(const sclwindow window, scldrawctx draw_ctx, const sc
 
             /* FIXME : There is a case that begin_pain fails. Inspection on the root cause is needed */
             if (draw_ctx) {
-                SCLShiftState shiftidx = context->get_shift_state();
-                if (shiftidx < 0 || shiftidx >= SCL_SHIFT_STATE_MAX) shiftidx = SCL_SHIFT_STATE_OFF;
+                SCLShiftState shift_index = context->get_shift_state();
+                if (shift_index < 0 || shift_index >= SCL_SHIFT_STATE_MAX) shift_index = SCL_SHIFT_STATE_OFF;
 
                 const SclLayout* layout = cache->get_cur_layout(window);
                 const SclLayoutKeyCoordinate* coordinate = cache->get_cur_layout_key_coordinate(window, key_index);
@@ -343,22 +401,22 @@ CSCLUIBuilder::draw_button(const sclwindow window, scldrawctx draw_ctx, const sc
                         draw_button_bg_by_sw(window, draw_ctx, key_index, state);
                     } else {
                         /* check it whether uses an individual images */
-                        if (coordinate->bg_image_path[shiftidx][state]) {
-                            if (strcmp(coordinate->bg_image_path[shiftidx][state], SCL_BACKGROUND_IMAGE_STRING) != 0) {
+                        if (coordinate->bg_image_path[shift_index][state]) {
+                            if (strcmp(coordinate->bg_image_path[shift_index][state], SCL_BACKGROUND_IMAGE_STRING) != 0) {
                                 /* case 2 (uses an indivisual image) */
-                                draw_button_bg_by_img(window, draw_ctx, key_index, state, shiftidx);
+                                draw_button_bg_by_img(window, draw_ctx, key_index, state, shift_index);
                             } else {
                                 /* case 3 (uses the layout background image) */
-                                draw_button_bg_by_layoutimg(window, draw_ctx, key_index, state, shiftidx);
+                                draw_button_bg_by_layoutimg(window, draw_ctx, key_index, state, shift_index);
                             }
                         } else if (force_draw_bg) {
-                            draw_button_bg_by_layoutimg(window, draw_ctx, key_index, state, shiftidx);
+                            draw_button_bg_by_layoutimg(window, draw_ctx, key_index, state, shift_index);
                         }
                         /* case 4 (don't draw anything for button's background if image_path is NULL) */
                     }
 
                     /* 2. displaying the label of the button */
-                    draw_button_label(window, draw_ctx, key_index, state, shiftidx);
+                    draw_button_label(window, draw_ctx, key_index, state, shift_index);
                 }
             }
 
@@ -378,7 +436,7 @@ CSCLUIBuilder::draw_button(const sclwindow window, scldrawctx draw_ctx, const sc
  * @remark draw_button
  */
 sclboolean
-CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_ctx, const scl16 key_index, const SCLButtonState state, const sclboolean shift)
+CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_ctx, const scl16 key_index, SCLButtonState state, SCLShiftState shift)
 {
     SCL_DEBUG();
 
@@ -397,16 +455,16 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
         sclint targetaddx = 0;
         sclint targetaddy = 0;
         sclwindow targetwin = window;
-        //SclWindowContext *winctx = windows->get_window_context(window, FALSE);
-        SclWindowContext *winctx = windows->get_window_context(window);
-        if (winctx) {
-            if (winctx->is_virtual) {
-                //SclWindowContext *basectx = windows->get_window_context(windows->get_base_window(), FALSE);
-                SclWindowContext *basectx = windows->get_window_context(windows->get_base_window());
-                if (basectx) {
+        //SclWindowContext *window_context = windows->get_window_context(window, FALSE);
+        SclWindowContext *window_context = windows->get_window_context(window);
+        if (window_context) {
+            if (window_context->is_virtual) {
+                //SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window(), FALSE);
+                SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
+                if (base_window_context) {
                     targetwin = windows->get_base_window();
-                    targetaddx = winctx->geometry.x - basectx->geometry.x;
-                    targetaddy = winctx->geometry.y - basectx->geometry.y;
+                    targetaddx = window_context->geometry.x - base_window_context->geometry.x;
+                    targetaddy = window_context->geometry.y - base_window_context->geometry.y;
                 }
             }
         }
@@ -433,7 +491,7 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
                     imgSize.height = coordinate->height;
                 }
 
-                SclPoint pos = {0,};
+                SclPoint pos = {0,0};
                 const SclLabelProperties *labelproperties = cache->get_label_properties(coordinate->image_label_type, 0);
                 if (labelproperties) {
                     SCLLabelAlignment align = labelproperties->alignment;
@@ -492,7 +550,6 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
         /* for text */
         for (int idx = 0; idx < coordinate->label_count; idx++) {
             SclFontInfo info;
-            CSCLResourceCache *cache = CSCLResourceCache::get_instance();
             const SclLabelProperties *labelproperties = cache->get_label_properties(coordinate->label_type, idx);
             if (labelproperties) {
                 const sclchar *label = coordinate->label[shift][idx];
@@ -501,10 +558,10 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
                 /* If the button type is BUTTON_TYPE_ROTATION, display current keyvalue */
                 if (idx == 0) {
                     if (coordinate->button_type == BUTTON_TYPE_ROTATION) {
-                        SclButtonContext* btncontext = cache->get_cur_button_context(window, key_index);
-                        if (btncontext) {
-                            if (btncontext->multikeyIdx < MAX_SIZE_OF_MULTITAP_CHAR) {
-                                label = coordinate->key_value[shift][btncontext->multikeyIdx];
+                        SclButtonContext* button_context = cache->get_cur_button_context(window, key_index);
+                        if (button_context) {
+                            if (button_context->multikeyIdx < MAX_SIZE_OF_MULTITAP_CHAR) {
+                                label = coordinate->key_value[shift][button_context->multikeyIdx];
                             }
                         }
                     }
@@ -554,9 +611,9 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
                             (sclint)coordinate->height,
                             labelproperties->alignment,
                             labelproperties->padding_x * utils->get_custom_scale_rate_x(),
-                            labelproperties->padding_y * utils->get_custom_scale_rate_x(),
+                            labelproperties->padding_y * utils->get_custom_scale_rate_y(),
                             labelproperties->inner_width * utils->get_custom_scale_rate_x(),
-                            labelproperties->inner_height * utils->get_custom_scale_rate_x()
+                            labelproperties->inner_height * utils->get_custom_scale_rate_y()
                         );
                     }
                     graphics->draw_text(
@@ -572,9 +629,9 @@ CSCLUIBuilder::draw_button_label(const sclwindow window, const scldrawctx draw_c
                         (sclint)coordinate->height,
                         labelproperties->alignment,
                         labelproperties->padding_x * utils->get_custom_scale_rate_x(),
-                        labelproperties->padding_y * utils->get_custom_scale_rate_x(),
+                        labelproperties->padding_y * utils->get_custom_scale_rate_y(),
                         labelproperties->inner_width * utils->get_custom_scale_rate_x(),
-                        labelproperties->inner_height * utils->get_custom_scale_rate_x()
+                        labelproperties->inner_height * utils->get_custom_scale_rate_y()
                     );
                 }
             }
@@ -598,19 +655,22 @@ CSCLUIBuilder::draw_window_bg_by_sw(const sclwindow window, const scldrawctx dra
 
     CSCLWindows *windows = CSCLWindows::get_instance();
     CSCLGraphics *graphics = CSCLGraphics::get_instance();
+    CSCLResourceCache *cache = CSCLResourceCache::get_instance();
 
-    if (graphics && windows) {
+    if (graphics && windows && cache) {
         /* If the target window is virtual window, let's draw it on the base window */
         sclwindow targetwin = window;
-        //SclWindowContext *winctx = windows->get_window_context(window, FALSE);
-        SclWindowContext *winctx = windows->get_window_context(window);
-        if (winctx) {
-            if (winctx->is_virtual) {
+        //SclWindowContext *window_context = windows->get_window_context(window, FALSE);
+        SclWindowContext *window_context = windows->get_window_context(window);
+        if (window_context) {
+            if (window_context->is_virtual) {
                 targetwin = windows->get_base_window();
             }
         }
 
-        graphics->draw_rectangle(targetwin, draw_ctx, 0, 0, size.width, size.height, line_width, line_color, TRUE, fill_color);
+        graphics->draw_rectangle(targetwin, draw_ctx,
+            cache->get_custom_starting_coordinates().x, cache->get_custom_starting_coordinates().y,
+            size.width, size.height, line_width, line_color, TRUE, fill_color);
     }
 
     return TRUE;
@@ -675,7 +735,7 @@ CSCLUIBuilder::draw_button_bg_by_sw(const sclwindow window, const scldrawctx dra
  * @remark draw_button
  */
 sclboolean
-CSCLUIBuilder::draw_button_bg_by_img(const sclwindow window, const scldrawctx draw_ctx,const scl16 key_index, const SCLButtonState state, const sclboolean shift)
+CSCLUIBuilder::draw_button_bg_by_img(const sclwindow window, const scldrawctx draw_ctx, scl16 key_index, SCLButtonState state, SCLShiftState shift)
 {
     SCL_DEBUG();
 
@@ -700,7 +760,7 @@ CSCLUIBuilder::draw_button_bg_by_img(const sclwindow window, const scldrawctx dr
         /* Check if we need to decorate the button's drag state */
         //if (context->get_cur_drag_state(context->get_last_touch_device_id()) != SCL_DRAG_STATE_NONE &&
         if (context->get_cur_key_modifier(context->get_last_touch_device_id()) != KEY_MODIFIER_NONE &&
-            context->get_cur_pressed_window(context->get_last_touch_device_id()) == window && 
+            context->get_cur_pressed_window(context->get_last_touch_device_id()) == window &&
             context->get_cur_pressed_key(context->get_last_touch_device_id()) == key_index &&
             coordinate->modifier_decorator) {
                 sclchar *decoration_bg_img = NULL;
@@ -739,16 +799,16 @@ CSCLUIBuilder::draw_button_bg_by_img(const sclwindow window, const scldrawctx dr
         sclint targetx = coordinate->x;
         sclint targety = coordinate->y;
         sclwindow targetwin = window;
-        //SclWindowContext *winctx = windows->get_window_context(window, FALSE);
-        SclWindowContext *winctx = windows->get_window_context(window);
-        if (winctx) {
-            if (winctx->is_virtual) {
-                //SclWindowContext *basectx = windows->get_window_context(windows->get_base_window(), FALSE);
-                SclWindowContext *basectx = windows->get_window_context(windows->get_base_window());
-                if (basectx) {
+        //SclWindowContext *window_context = windows->get_window_context(window, FALSE);
+        SclWindowContext *window_context = windows->get_window_context(window);
+        if (window_context) {
+            if (window_context->is_virtual) {
+                //SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window(), FALSE);
+                SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
+                if (base_window_context) {
                     targetwin = windows->get_base_window();
-                    targetx += winctx->geometry.x - basectx->geometry.x;
-                    targety += winctx->geometry.y - basectx->geometry.y;
+                    targetx += window_context->geometry.x - base_window_context->geometry.x;
+                    targety += window_context->geometry.y - base_window_context->geometry.y;
                 }
             }
         }
@@ -803,16 +863,16 @@ CSCLUIBuilder::draw_button_bg_by_layoutimg(const sclwindow window, const scldraw
     scl_assert_return_false(state >= BUTTON_STATE_NORMAL && state < SCL_BUTTON_STATE_MAX);
 
     CSCLWindows *windows = CSCLWindows::get_instance();
-    //SclWindowContext *winctx = windows->get_window_context(window, FALSE);
-    SclWindowContext *winctx = windows->get_window_context(window);
+    //SclWindowContext *window_context = windows->get_window_context(window, FALSE);
+    SclWindowContext *window_context = windows->get_window_context(window);
 
     sclchar composed_path[_POSIX_PATH_MAX] = {0,};
-    if (context && cache && coordinate && winctx) {
+    if (context && cache && coordinate && window_context) {
         sclboolean path_composed = FALSE;
         /* Check if we need to decorate the button's drag state */
         //if (context->get_cur_drag_state(context->get_last_touch_device_id()) != SCL_DRAG_STATE_NONE &&
         if (context->get_cur_key_modifier(context->get_last_touch_device_id()) != KEY_MODIFIER_NONE &&
-            context->get_cur_pressed_window(context->get_last_touch_device_id()) == window && 
+            context->get_cur_pressed_window(context->get_last_touch_device_id()) == window &&
             context->get_cur_pressed_key(context->get_last_touch_device_id()) == key_index &&
             coordinate->modifier_decorator) {
                 sclchar *decoration_bg_img = NULL;
@@ -855,8 +915,8 @@ CSCLUIBuilder::draw_button_bg_by_layoutimg(const sclwindow window, const scldraw
                 (sclint)coordinate->y - (sclint)coordinate->add_hit_top,
                 (sclint)coordinate->width + (sclint)coordinate->add_hit_left + (sclint)coordinate->add_hit_right,
                 (sclint)coordinate->height + (sclint)coordinate->add_hit_top + (sclint)coordinate->add_hit_bottom,
-                winctx->imgOffsetx + (sclint)coordinate->x - (sclint)coordinate->add_hit_left,
-                winctx->imgOffsety + (sclint)coordinate->y - (sclint)coordinate->add_hit_top,
+                window_context->imgOffsetx + (sclint)coordinate->x - (sclint)coordinate->add_hit_left,
+                window_context->imgOffsety + (sclint)coordinate->y - (sclint)coordinate->add_hit_top,
                 (sclint)coordinate->width + (sclint)coordinate->add_hit_left + (sclint)coordinate->add_hit_right,
                 (sclint)coordinate->height + (sclint)coordinate->add_hit_top + (sclint)coordinate->add_hit_bottom,
                 TRUE
@@ -864,11 +924,11 @@ CSCLUIBuilder::draw_button_bg_by_layoutimg(const sclwindow window, const scldraw
         } else {*/
             sclint dest_x = coordinate->x;
             sclint dest_y = coordinate->y;
-            if (winctx->is_virtual) {
-                SclWindowContext *basectx = windows->get_window_context(windows->get_base_window());
-                if (basectx) {
-                    dest_x += (winctx->geometry.x - basectx->geometry.x);
-                    dest_y += (winctx->geometry.y - basectx->geometry.y);
+            if (window_context->is_virtual) {
+                SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
+                if (base_window_context) {
+                    dest_x += (window_context->geometry.x - base_window_context->geometry.x);
+                    dest_y += (window_context->geometry.y - base_window_context->geometry.y);
                 }
             }
 
@@ -881,8 +941,8 @@ CSCLUIBuilder::draw_button_bg_by_layoutimg(const sclwindow window, const scldraw
                 dest_y,
                 (sclint)coordinate->width,
                 (sclint)coordinate->height,
-                winctx->layout_image_offset.x + (sclint)coordinate->x,
-                winctx->layout_image_offset.y + (sclint)coordinate->y,
+                window_context->layout_image_offset.x + (sclint)coordinate->x,
+                window_context->layout_image_offset.y + (sclint)coordinate->y,
                 (sclint)coordinate->width,
                 (sclint)coordinate->height,
                 TRUE
@@ -922,9 +982,12 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
     CSCLWindows *windows = CSCLWindows::get_instance();
     const SclLayout *layout = cache->get_cur_layout(windows->get_base_window());
     SclLayoutKeyCoordinate* coordinate = cache->get_cur_layout_key_coordinate(pressed_window, pressed_key);
-    SclButtonContext* btncontext = cache->get_cur_button_context(pressed_window, pressed_key);
-    SCLShiftState shiftidx = context->get_shift_state();
-    if (shiftidx < 0 || shiftidx >= SCL_SHIFT_STATE_MAX) shiftidx = SCL_SHIFT_STATE_OFF;
+    SclButtonContext* button_context = cache->get_cur_button_context(pressed_window, pressed_key);
+    SCLShiftState shift_index = context->get_shift_state();
+    if (shift_index < 0 || shift_index >= SCL_SHIFT_STATE_MAX) shift_index = SCL_SHIFT_STATE_OFF;
+    if (context->get_caps_lock_mode()) {
+        shift_index = (shift_index == SCL_SHIFT_STATE_OFF) ? SCL_SHIFT_STATE_ON : SCL_SHIFT_STATE_OFF;
+    }
 
     /* Do not show if current layout does not allow magnifier */
     if (!(layout->use_magnifier_window)) {
@@ -945,8 +1008,8 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
         }
         /* FIXME : workaround for not showing magnifier for recent symbols */
         /* Do not show if there's nothing to show */
-        //const char *targetstr = coordinate->key_value[shiftidx][btncontext->multikeyIdx];
-        const char *targetstr = coordinate->label[shiftidx][0];
+        //const char *targetstr = coordinate->key_value[shift_index][button_context->multikeyIdx];
+        const char *targetstr = coordinate->label[shift_index][0];
         if (state->get_cur_action_state() == ACTION_STATE_BASE_LONGKEY ||
             state->get_cur_action_state() == ACTION_STATE_POPUP_LONGKEY ) {
                 targetstr = coordinate->long_key_value;
@@ -963,19 +1026,19 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
         }
         if (targetstr == NULL) {
             if (utils) {
-                utils->log("coordinate->key_value[shift][btncontext->multikeyIdx] == NULL \n");
+                utils->log("coordinate->key_value[shift][button_context->multikeyIdx] == NULL \n");
             }
             return FALSE;
         } else if (strlen(targetstr) == 0) {
             if (utils) {
-                utils->log("coordinate->key_value[shift][btncontext->multikeyIdx]) == 0 \n");
+                utils->log("coordinate->key_value[shift][button_context->multikeyIdx]) == 0 \n");
             }
             return FALSE;
         }
     }
 
 #if 0
-    SclPoint pos = {0,};
+    SclPoint pos = {0,0};
     /* calculates x position to be set */
     pos.x = (coordinate->x + (coordinate->width / 2)) - (utils->get_scale_x(scl_magnifier_configure.width) / 2);
 
@@ -993,26 +1056,18 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
     }
     if (coordinate && magnifier_configure) {
         sclchar composed_path[_POSIX_PATH_MAX] = {0,};
-        sclfloat scale_rate_x, scale_rate_y;
-        if (layout->display_mode == DISPLAYMODE_PORTRAIT) {
-            scale_rate_x = m_utils->get_scale_rate_x();
-            scale_rate_y = m_utils->get_scale_rate_y();
-        } else {
-            scale_rate_x = m_utils->get_scale_rate_y();
-            scale_rate_y = m_utils->get_scale_rate_x();
-        }
         if (state->get_cur_action_state() == ACTION_STATE_BASE_LONGKEY) {
             m_utils->get_composed_path(composed_path, IMG_PATH_PREFIX, magnifier_configure->bg_long_key_image_path);
             m_gwes->m_graphics->draw_image(window, draw_ctx, composed_path, NULL, 0, 0,
                 magnifier_configure->width * utils->get_custom_scale_rate_x(),
                 magnifier_configure->height * utils->get_custom_scale_rate_y());
         } else {
-            if (context->get_shift_state() == SCL_SHIFT_STATE_LOCK) {
+            if (shift_index == SCL_SHIFT_STATE_LOCK) {
                 m_utils->get_composed_path(composed_path, IMG_PATH_PREFIX, magnifier_configure->bg_shift_lock_image_path);
                 m_gwes->m_graphics->draw_image(window, draw_ctx, composed_path, NULL, 0, 0,
                     magnifier_configure->width * utils->get_custom_scale_rate_x(),
                     magnifier_configure->height * utils->get_custom_scale_rate_y());
-            } else if (context->get_shift_state() == SCL_SHIFT_STATE_ON) {
+            } else if (shift_index == SCL_SHIFT_STATE_ON) {
                 m_utils->get_composed_path(composed_path, IMG_PATH_PREFIX, magnifier_configure->bg_shift_image_path);
                 m_gwes->m_graphics->draw_image(window, draw_ctx, composed_path, NULL, 0, 0,
                     magnifier_configure->width * utils->get_custom_scale_rate_x(),
@@ -1030,12 +1085,10 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
             const SclLabelProperties *labelproperties = cache->get_label_properties(magnifier_configure->label_type, loop);
             if (labelproperties) {
                 if (labelproperties->valid) {
-                    SCLShiftState shiftidx = context->get_shift_state();
-                    if (shiftidx < 0 || shiftidx >= SCL_SHIFT_STATE_MAX) shiftidx = SCL_SHIFT_STATE_OFF;
                     if (magnifier_configure->show_shift_label) {
-                        shiftidx = SCL_SHIFT_STATE_ON;
+                        shift_index = SCL_SHIFT_STATE_ON;
                     }
-                    if (coordinate->use_long_key_magnifier && state->get_cur_action_state() == ACTION_STATE_BASE_LONGKEY ||
+                    if ((coordinate->use_long_key_magnifier && state->get_cur_action_state() == ACTION_STATE_BASE_LONGKEY) ||
                         state->get_cur_action_state() == ACTION_STATE_POPUP_LONGKEY) {
                             const sclchar* targetstr = coordinate->long_key_value;
                             const sclchar* customstr = context->get_custom_magnifier_label(context->get_last_touch_device_id(), loop);
@@ -1057,12 +1110,12 @@ CSCLUIBuilder::show_magnifier(const sclwindow window, scldrawctx draw_ctx)
                         const sclchar* customstr = context->get_custom_magnifier_label(context->get_last_touch_device_id(), loop);
                         if (customstr) {
                             targetstr = customstr;
-                        } else if (coordinate->magnifier_label[shiftidx][loop]) {
-                            targetstr = coordinate->magnifier_label[shiftidx][loop];
+                        } else if (coordinate->magnifier_label[shift_index][loop]) {
+                            targetstr = coordinate->magnifier_label[shift_index][loop];
                             targetstr = cache->find_substituted_string(targetstr);
                         } else if (loop == 0) {
                             /* Don't display sublabels of each buttons in magnifier window - this policy can be changed, but for now */
-                            targetstr = coordinate->label[shiftidx][btncontext->multikeyIdx];
+                            targetstr = coordinate->label[shift_index][button_context->multikeyIdx];
                             targetstr = cache->find_substituted_string(targetstr);
                         }
                         if (targetstr) {
@@ -1120,6 +1173,9 @@ CSCLUIBuilder::draw_magnifier_label(const sclwindow window, const scldrawctx dra
 
             SCLShiftState shiftstate = context->get_shift_state();
             if (scl_check_arrindex(shiftstate, SCL_SHIFT_STATE_MAX)) {
+                if (context->get_caps_lock_mode()) {
+                    shiftstate = (shiftstate == SCL_SHIFT_STATE_OFF) ? SCL_SHIFT_STATE_ON : SCL_SHIFT_STATE_OFF;
+                }
                 graphics->draw_text(
                     window,
                     draw_ctx,

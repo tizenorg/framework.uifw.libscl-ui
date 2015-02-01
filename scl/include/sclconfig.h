@@ -1,14 +1,14 @@
 /*
- * Copyright 2012-2013 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2012 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
  *
- * Licensed under the Flora License, Version 1.1 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://floralicense.org/license/
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an AS IS BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -62,6 +62,7 @@ typedef enum _SCLButtonType {
     BUTTON_TYPE_ROTATION,			/**< Rotation key */
     BUTTON_TYPE_DIRECTION,			/**< Direction decided by whole mouse movement from inital point */
     BUTTON_TYPE_RELATIVE_DIRECTION,	/**< Direction decided by recent mouse movement */
+    BUTTON_TYPE_TOGGLE,				/** A button that has toggled state */
     BUTTON_TYPE_UIITEM,				/** Not a button, just for displaying image */
     MAX_BUTTON_TYPE					/* maximum number of Key type */
 }SCLButtonType;
@@ -104,7 +105,7 @@ typedef enum _SCLKeyModifier {
     KEY_MODIFIER_LONGKEY,						/**< longkey event */
     KEY_MODIFIER_MULTITAP_START,				/**< multitap started */
     KEY_MODIFIER_MULTITAP_REPEAT,				/**< multitap repeated */
-    
+
     KEY_MODIFIER_DIRECTION_LEFT,				/**< drag left */
     KEY_MODIFIER_DIRECTION_RIGHT,				/**< drag right */
     KEY_MODIFIER_DIRECTION_UP,					/**< drag up */
@@ -140,6 +141,8 @@ typedef enum _SCLKeyModifier {
     KEY_MODIFIER_DIRECTION_CURVE_LEFT_DOWN,		/**< drag left down */
     KEY_MODIFIER_DIRECTION_CURVE_RIGHT_UP,		/**< drag right up */
     KEY_MODIFIER_DIRECTION_CURVE_RIGHT_DOWN,	/**< drage right down */
+
+    KEY_MODIFIER_TOGGLED,						/**< toggled state */
 
     KEY_MODIFIER_MAX			/* maximum number of Key type */
 }SCLKeyModifier;
@@ -219,6 +222,7 @@ typedef enum _SCLButtonState {
     BUTTON_STATE_NORMAL = 0,	/**< normal state */
     BUTTON_STATE_PRESSED,		/**< pressed state */
     BUTTON_STATE_DISABLED,		/**< disabled state */
+    BUTTON_STATE_TOGGLED,		/**< toggled state */
     //BUTTON_STATE_HIGHLIGHT,	/**< highlighed state */
     //BUTTON_STATE_LONGKEY,		/**< londkey state */
     SCL_BUTTON_STATE_MAX		/* maximum number of button state */
@@ -277,6 +281,7 @@ typedef enum _SCLTimer {
     SCL_TIMER_USERAREA,
     SCL_TIMER_BUTTON_DELAY,
     SCL_TIMER_POPUP_TIMEOUT,
+    SCL_TIMER_ANIMATION,
     SCL_TIMER_AUTOTEST,
 }SCLTimer;
 
@@ -320,11 +325,26 @@ typedef enum _SCLWindowDecorator {
     MAX_WND_DECORATOR,
 }SCLWindowDecorator;
 
+/**@brief  Highligh moving direction */
+typedef enum _SCLHighlightNavigationDirection {
+    HIGHLIGHT_NAVIGATE_NONE,
+    HIGHLIGHT_NAVIGATE_LEFT,
+    HIGHLIGHT_NAVIGATE_RIGHT,
+    HIGHLIGHT_NAVIGATE_UP,
+    HIGHLIGHT_NAVIGATE_DOWN,
+    HIGHLIGHT_NAVIGATE_MAX
+}SCLHighlightNavigationDirection;
+
 /**@brief  SCL Notification to ISEs */
 typedef enum _SCLUINotiType {
-    SCL_UINOTITYPE_POPUP_TIMEOUT, // The layout of popup window will be passed as etc_info data
+    SCL_UINOTITYPE_POPUP_OPENING,
+    SCL_UINOTITYPE_POPUP_OPENED,
+    SCL_UINOTITYPE_POPUP_CLOSING,
+    SCL_UINOTITYPE_POPUP_CLOSED,
     SCL_UINOTITYPE_GESTURE_FLICK,
     SCL_UINOTITYPE_SHIFT_STATE_CHANGE,
+    SCL_UINOTITYPE_INPUT_MODE_CHANGE,
+    SCL_UINOTITYPE_HIGHLIGHT_NAVIGATE,
     MAX_NOTITYPE,
 }SCLUINotiType;
 
@@ -371,6 +391,11 @@ typedef enum _SCLParserType {
     SCL_PARSER_TYPE_BINARY_XML,
 } SCLParserType;
 
+/* Starting Coordinates Options */
+typedef enum _SCLStartingCoordinatesOption {
+    SCL_STARTING_COORDINATES_OPTION_ALL,			/* Draw everything relative to the starting coordinate */
+    SCL_STARTING_COORDINATES_OPTION_BUTTONS_ONLY,	/* Affect starting coordinates only to the buttons */
+} SCLStartingCoordinatesOption;
 
 /* SCL predefined Identifiers */
 #define SCL_SHIFT_STATE_OFF_HINT_STRING "Shift Off"
@@ -424,6 +449,12 @@ typedef enum _SCLParserType {
 #define SCL_FLICK_GESTURE_RECOG_TIME 500
 
 #define SCL_AUTO_DETECT_PORTRAIT_LANDSCAPE TRUE
+
+/* FIXME : This should be configurable also */
+#define SCL_HIGHLIGHT_UI_IMAGE "B09_icon_cue.png"
+
+#define SCL_ANIMATION_TIMER_INTERVAL (1000 / 30) // 30 frames per second
+#define SCL_ANIMATION_TIME 300 // Animation for 300 ms
 
 typedef enum _SCLDebugMode {
     DEBUGMODE_DISABLED,
