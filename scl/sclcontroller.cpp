@@ -32,6 +32,7 @@
 #include "sclres_manager.h"
 #include "scleventhandler.h"
 #include "sclanimator.h"
+#include <dlog.h>
 
 //#define DIRECTLY_DRAW_ON_EVENTS
 
@@ -1000,7 +1001,7 @@ CSCLController::process_button_repeat_pressed_event(sclwindow window, sclbyte ke
                         sclulong repeatKeyEvent = coordinate->key_event[shift_index][0];
 
                         /* In case of Delete key, Change from Char deletion to Word deletion
-                           when the input accelation speed is reached to Max */
+                           when the input acceleration speed is reached to Max */
                         SclResParserManager *sclres_manager = SclResParserManager::get_instance();
                         PSclDefaultConfigure default_configure = NULL;
                         if (sclres_manager) {
@@ -1400,7 +1401,7 @@ CSCLController::process_button_over_event(sclwindow window, sclint x, sclint y, 
                 return FALSE;
             }
             if (key_index != highlighted_key || window != highlighted_window ) {
-                printf("%d != %d || %p != %p\n", key_index, highlighted_key, window, highlighted_window);
+                SECURE_LOGD("%d != %d || %p != %p", key_index, highlighted_key, window, highlighted_window);
                 if(layout) {
                     if (coordinate->key_type != KEY_TYPE_NONE) {
                         if (context->get_tts_enabled()) {
@@ -1842,7 +1843,7 @@ CSCLController::process_button_release_event(sclwindow window, sclint x, sclint 
                                     sclres_manager->get_layout_id(sclres_input_mode_configure[popup_input_mode].layouts[display_mode]);
                                 if (popupLayoutId == NOT_USED){
                                     // deal with NOT_USED
-                                    printf("popupLayoutID is not used.\n");
+                                    LOGD("popupLayoutID is not used.");
                                 }
                                 SclLayout *layout = NULL;
                                 /* FIXME */
@@ -1941,7 +1942,7 @@ CSCLController::process_button_release_event(sclwindow window, sclint x, sclint 
 
                 key_event_desc.touch_event_order = context->get_multi_touch_event_order(touch_id);
 
-                handler->on_event_drag_state_changed(key_event_desc);
+                SCLEventReturnType evt = handler->on_event_drag_state_changed(key_event_desc);
             }
         }
 
@@ -2019,7 +2020,8 @@ CSCLController::mouse_press(sclwindow window, sclint x, sclint y, scltouchdevice
         if (windows->is_base_window(window)) {
             SclWindowContext *dim_window_context = windows->get_window_context(windows->get_dim_window());
             if (dim_window_context) {
-                if (dim_window_context->is_virtual && !(dim_window_context->hidden)) {
+                LOGD ("dim window is_virtual:%d, hidden:%d", dim_window_context->is_virtual, dim_window_context->hidden);
+                if (/*dim_window_context->is_virtual &&*/ !(dim_window_context->hidden)) {
                     window = windows->get_dim_window();
                     window_context = dim_window_context;
                 }
@@ -2539,7 +2541,7 @@ CSCLController::mouse_release(sclwindow window, sclint x, sclint y, scltouchdevi
                 if (layout && layout->use_sw_background && layout->bg_color.a == 0) {
                     /* If we could not find appropriate button in this popup window and the popup is transparent */
                     SclWindowContext *base_window_context = windows->get_window_context(windows->get_base_window());
-                    if (base_window_context) {
+                    if (base_window_context && window_context) {
                         x = (window_context->geometry.x + x - base_window_context->geometry.x);
                         y = (window_context->geometry.y + y - base_window_context->geometry.y);
                     }
@@ -2981,7 +2983,7 @@ CSCLController::mouse_move(sclwindow window, sclint x, sclint y, scltouchdevice 
                     deltax = originx - startx;
                     deltay = originy - starty;
                     sclfloat dist_farthest = utils->get_approximate_distance(originx, originy, startx, starty);
-                    printf("%d %d %d %d %f, %d %d\n", originx, originy, startx, starty, dist_farthest, cur_drag_state, next_drag_state);
+                    //printf("%d %d %d %d %f, %d %d\n", originx, originy, startx, starty, dist_farthest, cur_drag_state, next_drag_state);
                     /* Let's see how much we are away from the last farthest point */
                     sclfloat diffdir_recog_dist = SCL_DIRECTION_RELATIVE_DIFFDIR_RECOG_DIST * utils->get_smallest_scale_rate();
                     /* If we moved certain amount from the point where direction changed, process drag state change routine */
@@ -3034,7 +3036,7 @@ CSCLController::mouse_move(sclwindow window, sclint x, sclint y, scltouchdevice 
                 if (drag_state_changed) {
                     /* When the dragging direction changes, save the current position as farthest point for future comparison */
                     context->set_farthest_move_point(touch_id, originx, originy);
-                    printf("SET_FARTHEST : %d %d %d\n", originx, originy, context->get_cur_drag_state(touch_id));
+                    LOGD("SET_FARTHEST : %d %d %d", originx, originy, context->get_cur_drag_state(touch_id));
                 }
             }
 
@@ -3186,7 +3188,7 @@ CSCLController::mouse_move(sclwindow window, sclint x, sclint y, scltouchdevice 
                                     /* If we could not find appropriate button in this popup window and the popup is transparent */
                                     SclWindowContext *base_window_context =
                                         windows->get_window_context(windows->get_base_window());
-                                    if (base_window_context) {
+                                    if (base_window_context && window_context) {
                                         x = (window_context->geometry.x + x - base_window_context->geometry.x);
                                         y = (window_context->geometry.y + y - base_window_context->geometry.y);
                                     }
@@ -3644,12 +3646,8 @@ void CSCLController::handle_engine_signal( SclInternalSignal signal, sclwindow t
     for (loop = 0;loop < SIGACTION_MAXNUM;loop++) {
         if (SIGNAL_TABLE[loop][signal] == TRUE) {
             switch (loop) {
-            case SIGACTION_RESIZE_RESOURCES:
-                break;
             case SIGACTION_DESTROY_TIMERS:
                 events->destroy_all_timer();
-                break;
-            case SIGACTION_CLEAR_PRIVATEKEYS:
                 break;
             case SIGACTION_RECOMPUTE_LAYOUT: {
                 if (targetWindow != SCLWINDOW_INVALID) {
@@ -3696,10 +3694,6 @@ void CSCLController::handle_engine_signal( SclInternalSignal signal, sclwindow t
             case SIGACTION_UNPRESS_KEYS:
                 context->set_cur_pressed_key(context->get_last_touch_device_id(), NOT_USED);
                 context->set_cur_pressed_window(context->get_last_touch_device_id(), SCLWINDOW_INVALID);
-            break;
-            case SIGACTION_INIT_DISPLAY:
-            break;
-            case SIGACTION_INIT_INPUTMODE:
             break;
             default:
             break;
@@ -3847,7 +3841,7 @@ CSCLController::configure_autopopup_window(sclwindow window, sclbyte key_index, 
                 autopopup_configure->decoration_size * utils->get_smallest_custom_scale_rate();
             /* First check the growing direction of this autopopup window */
             if (coordinate->x < baseWndRect.width / 2) {
-                /* We're growing left to right, caculate the left start point */
+                /* We're growing left to right, calculate the left start point */
                 rect->x = baseWndRect.x + coordinate->x + (coordinate->width / 2) -
                     (autopopup_configure->button_width * utils->get_custom_scale_rate_x() / 2) -
                     autopopup_configure->bg_padding * utils->get_smallest_custom_scale_rate();
@@ -3858,7 +3852,7 @@ CSCLController::configure_autopopup_window(sclwindow window, sclbyte key_index, 
                             relocate_unit) + 1) * relocate_unit;
                 }
             } else {
-                /* We're growing right to left, caculate the right end point */
+                /* We're growing right to left, calculate the right end point */
                 rect->x = baseWndRect.x + coordinate->x + (coordinate->width / 2) +
                     (autopopup_configure->button_width * utils->get_custom_scale_rate_x() / 2) +
                     autopopup_configure->bg_padding * utils->get_smallest_custom_scale_rate();

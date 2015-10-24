@@ -22,6 +22,7 @@
 #include "sclresourcecache.h"
 #include "scluibuilder.h"
 #include "sclwindows.h"
+#include "sclres_manager.h"
 
 #include <glib.h>
 #include <Elementary.h>
@@ -36,6 +37,8 @@
 
 using namespace scl;
 
+#define USING_DIM_BG
+
 static Ecore_X_Atom ATOM_WM_CLASS = 0;
 static Ecore_X_Window app_window = 0;
 
@@ -49,7 +52,6 @@ const sclint rotation_values_EFL[ROTATION_MAX] = {
 void release_all(Evas_Object *win);
 
 #include "sclgraphics-efl.h"
-#include <utilX.h>
 #ifdef TEST_NEWBACKEND
 #include <Ecore_Evas.h>
 #include <Ecore.h>
@@ -77,24 +79,17 @@ CSCLWindowsImplEfl::~CSCLWindowsImplEfl()
     SCL_DEBUG();
 }
 
-static Ecore_Event_Handler *_candidate_show_handler         = NULL;
-
-static Eina_Bool x_event_window_show_cb (void *data, int ev_type, void *event)
+static void window_show_cb (void *data, Evas *e, Evas_Object *obj, void *event)
 {
-    CSCLWindows *windows = CSCLWindows::get_instance();
-    Evas_Object *window = (Evas_Object *)windows->get_base_window();
-    Ecore_X_Event_Window_Show *e = (Ecore_X_Event_Window_Show*)event;
-
-    if(e->win == elm_win_xwindow_get(window)) {
-        LOGD("INSIDE =-=-=-=- x_event_window_show_cb, Trying to Grab Key Board : \n");
+    LOGD("INSIDE =-=-=-=- window_show_cb, Trying to Grab Key Board : \n");
 #ifdef USING_KEY_GRAB
-        CSCLKeyFocusHandler* focus_handler = CSCLKeyFocusHandler::get_instance();
+    CSCLWindows *windows = CSCLWindows::get_instance();
+    CSCLKeyFocusHandler* focus_handler = CSCLKeyFocusHandler::get_instance();
+
+    if (windows && focus_handler)
         focus_handler->grab_keyboard(windows->get_base_window());
 #endif
-    }
-    return ECORE_CALLBACK_RENEW;
 }
-
 
 void CSCLWindowsImplEfl::init()
 {
@@ -120,8 +115,8 @@ CSCLWindowsImplEfl::create_base_window(const sclwindow parent, SclWindowContext 
         window_context->etc_info = NULL;
         window_context->window = parent;
 
-    //Adding window show event handler
-    _candidate_show_handler = ecore_event_handler_add (ECORE_X_EVENT_WINDOW_SHOW, x_event_window_show_cb, NULL);
+        //Adding window show event handler
+        evas_object_event_callback_add(static_cast<Evas_Object*>(parent), EVAS_CALLBACK_SHOW, window_show_cb, NULL);
 
 #ifndef APPLY_WINDOW_MANAGER_CHANGE
         ecore_x_icccm_name_class_set(elm_win_xwindow_get(static_cast<Evas_Object*>(parent)), "Virtual Keyboard", "ISF" );
@@ -136,6 +131,9 @@ CSCLWindowsImplEfl::create_base_window(const sclwindow parent, SclWindowContext 
 
         ret = window_context->window;
     }
+
+    int rots[4] = {0, 90, 180, 270};
+    elm_win_wm_rotation_available_rotations_set(static_cast<Evas_Object*>(parent), rots, 4);
 
     CSCLUtils *utils = CSCLUtils::get_instance();
     if (utils) {
@@ -155,7 +153,7 @@ CSCLWindowsImplEfl::create_window(const sclwindow parent, SclWindowContext *wind
     SCL_DEBUG();
 
     Evas_Object *win = NULL;
-    win = elm_win_add(static_cast<Evas_Object*>(parent), "SCLPopup", ELM_WIN_BASIC);
+    win = elm_win_add(static_cast<Evas_Object*>(parent), "SCLPopup", ELM_WIN_UTILITY);
 
     elm_win_borderless_set(win, EINA_TRUE);
     elm_win_alpha_set(win, EINA_TRUE);
@@ -186,9 +184,6 @@ CSCLWindowsImplEfl::create_window(const sclwindow parent, SclWindowContext *wind
 #ifndef FULL_SCREEN_TEST
     //evas_object_resize(win, width, height);
 #endif
-
-    const char *szProfile[] = {"mobile", ""};
-    elm_win_profiles_set(win, szProfile, 1);
 
 #ifndef APPLY_WINDOW_MANAGER_CHANGE
     ecore_x_icccm_name_class_set(elm_win_xwindow_get(static_cast<Evas_Object*>(win)), "ISF Popup", "ISF");
@@ -231,7 +226,7 @@ CSCLWindowsImplEfl::create_magnifier_window(const sclwindow parent, SclWindowCon
     SCL_DEBUG();
 
     Evas_Object *win = NULL;
-    win = elm_win_add(static_cast<Evas_Object*>(parent), "Magnifier", ELM_WIN_BASIC);
+    win = elm_win_add(static_cast<Evas_Object*>(parent), "Magnifier", ELM_WIN_UTILITY);
 
     elm_win_borderless_set(win, EINA_TRUE);
     elm_win_alpha_set(win, EINA_TRUE);
@@ -247,9 +242,6 @@ CSCLWindowsImplEfl::create_magnifier_window(const sclwindow parent, SclWindowCon
 #else
     //evas_object_resize(win, width, height);
 #endif
-
-    const char *szProfile[] = {"mobile", ""};
-    elm_win_profiles_set(win, szProfile, 1);
 
     ecore_x_e_window_rotation_geometry_set(elm_win_xwindow_get(win),
         rotation_values_EFL[ROTATION_0], 0, 0, width, height);
@@ -282,8 +274,6 @@ CSCLWindowsImplEfl::create_magnifier_window(const sclwindow parent, SclWindowCon
     }
 #endif
 
-    //evas_font_path_prepend(evas_object_evas_get(win), "/usr/share/SLP/fonts");
-
     CSCLContext *context = CSCLContext::get_instance();
     set_window_rotation(win, context->get_rotation());
 
@@ -309,13 +299,16 @@ CSCLWindowsImplEfl::create_dim_window(const sclwindow parent, SclWindowContext *
     SCL_DEBUG();
 
     Evas_Object *win = NULL;
-    win = elm_win_add(static_cast<Evas_Object*>(parent), "SCLPopup", ELM_WIN_BASIC);
+    win = elm_win_add(static_cast<Evas_Object*>(parent), "SCLPopup", ELM_WIN_UTILITY);
 
     elm_win_borderless_set(win, EINA_TRUE);
     elm_win_alpha_set(win, EINA_TRUE);
     elm_win_title_set(win, "Keyboard Dim Window");
 
     evas_object_resize(win, width, height);
+
+    int rots[4] = {0,90,180,270};
+    elm_win_wm_rotation_available_rotations_set(win, rots, 4);
 
 #ifndef APPLY_WINDOW_MANAGER_CHANGE
     ecore_x_icccm_name_class_set(elm_win_xwindow_get(static_cast<Evas_Object*>(win)), "ISF Popup", "ISF");
@@ -335,9 +328,6 @@ CSCLWindowsImplEfl::create_dim_window(const sclwindow parent, SclWindowContext *
         }
     }
 #endif
-
-    const char *szProfile[] = {"mobile", ""};
-    elm_win_profiles_set(win, szProfile, 1);
 
     CSCLContext *context = CSCLContext::get_instance();
     set_window_rotation(win, context->get_rotation());
@@ -482,6 +472,33 @@ CSCLWindowsImplEfl::show_window(const sclwindow window, sclboolean queue)
     CSCLContext *context = CSCLContext::get_instance();
     CSCLUtils *utils = CSCLUtils::get_instance();
     if (windows && context && window) {
+#ifdef USING_DIM_BG
+        if (window == windows->get_dim_window ()) {
+            Evas_Object *base_window = static_cast<Evas_Object*>(windows->get_base_window ());
+            static Evas_Object *dim_bg = NULL;
+            if (dim_bg == NULL) {
+                dim_bg = elm_bg_add (static_cast<Evas_Object*>(windows->get_base_window ()));
+                SclColor color;
+                color.r = color.g = color.b = 0;
+                color.a = 102;
+                SclResParserManager *sclres_manager = SclResParserManager::get_instance ();
+                if (sclres_manager) {
+                    PSclDefaultConfigure default_configure = sclres_manager->get_default_configure ();
+                    if (default_configure)
+                        color = default_configure->dim_color;
+                }
+                evas_object_color_set (dim_bg, color.r, color.g, color.b, color.a);
+                evas_object_data_set (base_window, "dim_bg", (void *)dim_bg);
+            }
+            SclRectangle rect;
+            get_window_rect (windows->get_base_window (), &rect);
+            evas_object_resize (dim_bg, rect.width, rect.height);
+            evas_object_move (dim_bg, 0, 0);
+            evas_object_show (dim_bg);
+            evas_object_layer_set (dim_bg, SHRT_MAX);
+            return;
+        }
+#endif
         SclWindowContext *window_context = windows->get_window_context(window);
         if (!(context->get_hidden_state())) {
             if (window_context) {
@@ -557,6 +574,14 @@ CSCLWindowsImplEfl::hide_window(const sclwindow window,  sclboolean fForce)
     SclWindowContext *window_context = NULL;
 
     if (windows && window) {
+#ifdef USING_DIM_BG
+        if (window == windows->get_dim_window ()) {
+            Evas_Object *base_window = static_cast<Evas_Object*>(windows->get_base_window ());
+            Evas_Object *dim_bg = (Evas_Object *)evas_object_data_get (base_window, "dim_bg");
+            evas_object_hide (dim_bg);
+            return;
+        }
+#endif
 #ifdef USING_KEY_GRAB
     if (window == windows->get_base_window()) {
         CSCLKeyFocusHandler* focus_handler = CSCLKeyFocusHandler::get_instance();
@@ -771,7 +796,6 @@ CSCLWindowsImplEfl::resize_window(const sclwindow window, scl16 width, scl16 hei
     if (window == windows->get_magnifier_window()) {
         SclWindowContext *window_context = windows->get_window_context(windows->get_base_window());
         if (window_context->width != width || window_context->height != height) {
-            CSCLUtils *utils = CSCLUtils::get_instance();
             sclint scrx, scry, winx, winy;
             utils->get_screen_resolution(&scrx, &scry);
             if (context->get_rotation_degree() == 90 || context->get_rotation_degree() == 270) {
@@ -1052,7 +1076,6 @@ CSCLWindowsImplEfl::get_window_rect(const sclwindow window, SclRectangle *rect)
     return TRUE;
 }
 
-#include <X11/Xutil.h>
 /**
  * Sets rotation
  */
@@ -1072,10 +1095,6 @@ CSCLWindowsImplEfl::set_window_rotation(const sclwindow window, SCLRotation rota
             if (window_context->is_virtual) {
                 return;
             }
-        }
-
-        if (scl_check_arrindex(rotation, ROTATION_MAX)) {
-            elm_win_rotation_with_resize_set(static_cast<Evas_Object*>(window), rotation_values_EFL[rotation]);
         }
 
         XSizeHints hint;

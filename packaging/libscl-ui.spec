@@ -3,7 +3,7 @@
 
 Name:       libscl-ui
 Summary:    A library for developing XML-based software keyboards
-Version:    0.4.7
+Version:    0.5.7
 Release:    1
 Group:      Graphics & UI Framework/Input
 License:    Apache-2.0
@@ -19,6 +19,7 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(x11)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(tts)
+BuildRequires:  pkgconfig(libscl-common)
 
 
 %description
@@ -41,6 +42,21 @@ export CFLAGS+=" -DTIZEN_DEBUG_ENABLE"
 export CXXFLAGS+=" -DTIZEN_DEBUG_ENABLE"
 export FFLAGS+=" -DTIZEN_DEBUG_ENABLE"
 
+%if "%{?tizen_profile_name}" == "mobile"
+CFLAGS+=" -D_MOBILE";
+CXXFLAGS+=" -D_MOBILE";
+%endif
+
+%if "%{?tizen_profile_name}" == "wearable"
+CFLAGS+=" -D_WEARABLE";
+CXXFLAGS+=" -D_WEARABLE";
+%endif
+
+%if "%{?tizen_profile_name}" == "tv"
+CFLAGS+=" -D_TV";
+CXXFLAGS+=" -D_TV";
+%endif
+
 rm -rf CMakeFiles
 rm -rf CMakeCache.txt
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
@@ -60,6 +76,7 @@ cp LICENSE %{buildroot}/usr/share/license/%{name}
 %postun
 
 %files
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libscl-ui.so
 %{_datadir}/libscl-ui/metadata.xml

@@ -18,6 +18,9 @@
 #ifndef __SCL_CONFIG_H__
 #define __SCL_CONFIG_H__
 
+namespace scl
+{
+
 #ifndef IMG_PATH_PREFIX
 #define IMG_PATH_PREFIX "image"
 #endif
@@ -451,7 +454,7 @@ typedef enum _SCLStartingCoordinatesOption {
 #define SCL_AUTO_DETECT_PORTRAIT_LANDSCAPE TRUE
 
 /* FIXME : This should be configurable also */
-#define SCL_HIGHLIGHT_UI_IMAGE "B09_icon_cue.png"
+#define SCL_HIGHLIGHT_UI_IMAGE "B09_Qwerty_btn_highlight.png"
 
 #define SCL_ANIMATION_TIMER_INTERVAL (1000 / 30) // 30 frames per second
 #define SCL_ANIMATION_TIME 300 // Animation for 300 ms
@@ -461,5 +464,7 @@ typedef enum _SCLDebugMode {
     DEBUGMODE_DISPLAY_INTERNAL,
     DEBUGMODE_AUTOTEST,
 }SCLDebugMode;
+
+}
 
 #endif //__SCL_CONFIG_H__

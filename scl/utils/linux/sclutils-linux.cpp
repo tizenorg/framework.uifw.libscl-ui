@@ -81,7 +81,7 @@ void accessibility_changed_cb(keynode_t *key, void* data)
 {
     int r;
     int enabled = 0;
-    if (vconf_get_int(VCONFKEY_SETAPPL_ACCESSIBILITY_TTS, &enabled) == VCONF_OK) {
+    if (vconf_get_bool(VCONFKEY_SETAPPL_ACCESSIBILITY_TTS, &enabled) == VCONF_OK) {
         LOGD("VCONFKEY_SETAPPL_ACCESSIBILITY_TTS : %d, (%p)", enabled, tts);
         if (enabled) {
             if (tts == NULL) {
@@ -152,8 +152,6 @@ CSCLUtilsImplLinux::fini() {
 sclboolean
 CSCLUtilsImplLinux::get_screen_resolution(sclint *x, sclint *y) {
     SCL_DEBUG();
-    //*x = gdk_screen_get_width(gdk_screen_get_default());
-    //*y = gdk_screen_get_height(gdk_screen_get_default());
     CSCLContext *context = CSCLContext::get_instance();
 
     static Evas_Coord scr_w = 0, scr_h = 0;
@@ -223,7 +221,7 @@ CSCLUtilsImplLinux::play_sound(const sclchar* snd_style) {
     } SOUND_TYPES;
 
     static const SOUND_TYPES internal_types[] = {
-        {"Backspace", FEEDBACK_PATTERN_SIP_BACKSPACE},
+        {"Backspace", FEEDBACK_PATTERN_SIP},
     };
     static const sclint SOUND_TYPES_NUM = (sizeof(internal_types) / sizeof(SOUND_TYPES));
 
@@ -261,7 +259,7 @@ CSCLUtilsImplLinux::play_vibration(const sclchar* vibe_style, const scllong dura
     } VIBRATION_TYPES;
 
     static const VIBRATION_TYPES internal_types[] = {
-        {"Backspace", FEEDBACK_PATTERN_SIP_BACKSPACE},
+        {"Backspace", FEEDBACK_PATTERN_SIP},
     };
     static const sclint VIBRATION_TYPES_NUM = (sizeof(internal_types) / sizeof(VIBRATION_TYPES));
 

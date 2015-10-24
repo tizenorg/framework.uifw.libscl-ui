@@ -206,9 +206,6 @@ Eina_Bool mouse_press(void *data, int type, void *event_info)
 {
     SCL_DEBUG();
 
-    Evas_Event_Mouse_Down *ev1 = (Evas_Event_Mouse_Down*)event_info;
-    LOGD("mouse_press : %d %d\n", ev1->output.x, ev1->output.y);
-
     CSCLController *controller = CSCLController::get_instance();
     CSCLWindows *windows = CSCLWindows::get_instance();
     CSCLContext *context = CSCLContext::get_instance();
@@ -218,6 +215,8 @@ Eina_Bool mouse_press(void *data, int type, void *event_info)
     Ecore_Event_Mouse_Button *ev = (Ecore_Event_Mouse_Button*)event_info;
 
     if (controller && windows && context && utils && adjustment && ev) {
+        LOGD("mouse_press : %d %d, %d %d\n", ev->root.x, ev->root.y, ev->x, ev->y);
+
         sclbyte index = 0;
         sclboolean processed = FALSE;
         sclwindow window = SCLWINDOW_INVALID;

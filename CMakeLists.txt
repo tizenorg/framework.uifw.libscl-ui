@@ -98,6 +98,7 @@ pkg_check_modules(pkgs REQUIRED
         utilX
         tts
         vconf
+        libscl-common
         )
 
 FOREACH(flag ${pkgs_CFLAGS})
@@ -122,13 +123,12 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION ${LIBDIR})
 
-INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/scl.h" DESTINATION include/libscl-ui)
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/sclui.h" DESTINATION include/libscl-ui)
-INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/scltypes.h" DESTINATION include/libscl-ui)
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/sclconfig.h" DESTINATION include/libscl-ui)
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/sclstructs.h" DESTINATION include/libscl-ui)
 INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/scleventcallback.h" DESTINATION include/libscl-ui)
-INSTALL(FILES "${CMAKE_SOURCE_DIR}/res/simple_debug.h" DESTINATION include/libscl-ui)
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/sclutils.h" DESTINATION include/libscl-ui)
+INSTALL(FILES "${CMAKE_SOURCE_DIR}/scl/include/sclfeedback.h" DESTINATION include/libscl-ui)
 
 CONFIGURE_FILE(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc DESTINATION lib/pkgconfig)
